@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Camera, Mail, User, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 
 export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
-  const [profile, setProfile] = useState({
+  const [profile, setProfile] = useState<any>({
     name: 'Alex Morgan',
     email: 'alex@example.com',
     avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop&crop=face',
@@ -15,17 +16,133 @@ export default function ProfilePage() {
   });
 
   const [editedProfile, setEditedProfile] = useState(profile);
+  const [loading, setLoading] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleSave = () => {
-    setProfile(editedProfile);
-    setIsEditing(false);
-    toast.success('Profile updated successfully');
-  };
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchProfile = async () => {
+      setLoading(true);
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        toast.error('You must be signed in to view profile');
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+        // keep defaults if profile not found
+        setLoading(false);
+        return;
+      }
+
+      if (!mounted) return;
+
+      const formatted = {
+        name: data.full_name ?? data.fullName ?? profile.name,
+        email: user.email ?? profile.email,
+        avatarUrl: data.avatar_url ?? profile.avatarUrl,
+        joinedDate: data.created_at ? new Date(data.created_at).toLocaleDateString() : profile.joinedDate,
+      };
+
+      setProfile(formatted);
+      setEditedProfile(formatted);
+      setLoading(false);
+    };
+
+    fetchProfile();
+
+    return () => {
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const stats = {
     magazines: 12,
     drafts: 3,
     favorites: 5,
+  };
+
+  const handleSave = async () => {
+    setLoading(true);
+
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        toast.error('You must be signed in to update profile');
+        setLoading(false);
+        return;
+      }
+
+      let avatarUrl = editedProfile.avatarUrl;
+
+      // If a file was selected in the hidden input, upload it
+      const fileInput = fileInputRef.current;
+      if (fileInput && fileInput.files && fileInput.files[0]) {
+        const file = fileInput.files[0];
+        const filePath = `${user.id}/${Date.now()}_${file.name}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('magazine-assets')
+          .upload(filePath, file, { cacheControl: '3600', upsert: true });
+
+        if (uploadError) {
+          console.error('Avatar upload error:', uploadError);
+          toast.error('Failed to upload avatar');
+          setLoading(false);
+          return;
+        }
+
+        const { publicUrl } = supabase.storage.from('magazine-assets').getPublicUrl(uploadData.path);
+        avatarUrl = publicUrl ?? avatarUrl;
+      }
+
+      // Upsert profile row
+      const { error } = await supabase.from('profiles').upsert({
+        id: user.id,
+        full_name: editedProfile.name,
+        avatar_url: avatarUrl,
+        updated_at: new Date().toISOString()
+      });
+
+      if (error) {
+        console.error('Error updating profile:', error);
+        toast.error('Failed to update profile');
+        setLoading(false);
+        return;
+      }
+
+      setProfile({ ...editedProfile, avatarUrl });
+      setIsEditing(false);
+      toast.success('Profile updated successfully');
+    } catch (err) {
+      console.error(err);
+      toast.error('Something went wrong saving profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Trigger file input when camera button is clicked (only when editing)
+  const handleAvatarButton = () => {
+    if (!isEditing) return;
+    fileInputRef.current?.click();
   };
 
   return (
@@ -48,9 +165,26 @@ export default function ProfilePage() {
                   className="w-full h-full object-cover"
                 />
               </div>
-              <button className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-gold text-primary-foreground flex items-center justify-center shadow-soft hover:bg-gold/90 transition-colors">
+              <button
+                onClick={handleAvatarButton}
+                className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-gold text-primary-foreground flex items-center justify-center shadow-soft hover:bg-gold/90 transition-colors"
+              >
                 <Camera className="h-4 w-4" />
               </button>
+              {/* hidden file input for avatar */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    // show preview locally immediately
+                    const url = URL.createObjectURL(e.target.files[0]);
+                    setEditedProfile({ ...editedProfile, avatarUrl: url });
+                  }
+                }}
+              />
             </div>
 
             {/* Info */}
@@ -74,6 +208,7 @@ export default function ProfilePage() {
                       className="pl-10"
                       placeholder="Email"
                       type="email"
+                      disabled
                     />
                   </div>
                 </div>
@@ -96,10 +231,10 @@ export default function ProfilePage() {
             <div className="flex gap-2">
               {isEditing ? (
                 <>
-                  <Button variant="outline" onClick={() => setIsEditing(false)}>
+                  <Button variant="outline" onClick={() => { setIsEditing(false); setEditedProfile(profile); }}>
                     Cancel
                   </Button>
-                  <Button variant="gold" onClick={handleSave}>
+                  <Button variant="gold" onClick={handleSave} disabled={loading}>
                     Save
                   </Button>
                 </>

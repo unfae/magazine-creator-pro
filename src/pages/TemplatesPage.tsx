@@ -1,16 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TemplateCard } from '@/components/templates/TemplateCard';
-import { templates } from '@/data/mockData';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase'; // 👈 ADDED
 
 const categories = ['All', 'Fashion', 'Travel', 'Family', 'Portfolio', 'Wedding', 'Street'];
 
 export default function TemplatesPage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [templates, setTemplates] = useState<any[]>([]); // 👈 replaces mock data
+  const [loading, setLoading] = useState(true);
 
-  const filteredTemplates = selectedCategory === 'All' 
-    ? templates 
-    : templates.filter(t => t.category === selectedCategory);
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      const { data, error } = await supabase
+        .from('templates')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error) setTemplates(data || []);
+      setLoading(false);
+    };
+
+    fetchTemplates();
+  }, []);
+
+  const filteredTemplates =
+    selectedCategory === 'All'
+      ? templates
+      : templates.filter((t) => t.category === selectedCategory);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -40,14 +57,23 @@ export default function TemplatesPage() {
         ))}
       </div>
 
-      {/* Templates Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 stagger-children">
-        {filteredTemplates.map((template) => (
-          <TemplateCard key={template.id} template={template} />
-        ))}
-      </div>
+      {/* Loading */}
+      {loading && (
+        <div className="text-center py-20">
+          <p className="text-muted-foreground">Loading templates...</p>
+        </div>
+      )}
 
-      {filteredTemplates.length === 0 && (
+      {/* Templates Grid */}
+      {!loading && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 stagger-children">
+          {filteredTemplates.map((template) => (
+            <TemplateCard key={template.id} template={template} />
+          ))}
+        </div>
+      )}
+
+      {!loading && filteredTemplates.length === 0 && (
         <div className="text-center py-12">
           <p className="text-muted-foreground">No templates found in this category.</p>
         </div>

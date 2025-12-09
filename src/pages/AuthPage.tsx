@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase'; // 👈 ADDED
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -22,17 +23,47 @@ export default function AuthPage() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate auth - will connect to Supabase later
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast.success(isLogin ? 'Welcome back!' : 'Account created successfully!');
-    navigate('/dashboard');
-    setIsLoading(false);
+    try {
+      let authResponse;
+
+      if (isLogin) {
+        authResponse = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+      } else {
+        authResponse = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        // Create profile row on sign up
+        if (!authResponse.error) {
+          await supabase.from('profiles').insert({
+            id: authResponse.data.user?.id,
+            full_name: formData.name,
+          });
+        }
+      }
+
+      if (authResponse.error) {
+        toast.error(authResponse.error.message);
+        return;
+      }
+
+      toast.success(isLogin ? 'Welcome back!' : 'Account created successfully!');
+      navigate('/dashboard');
+    } catch (err: any) {
+      toast.error('Something went wrong, please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Left Side - Decorative */}
+      {/* --- existing code unchanged below --- */}
+      {/* Left Side */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-foreground to-charcoal-light" />
         <div 
@@ -55,7 +86,7 @@ export default function AuthPage() {
         </div>
       </div>
 
-      {/* Right Side - Auth Form */}
+      {/* Right Side */}
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md animate-fade-in">
           <div className="text-center mb-8 lg:hidden">
@@ -77,6 +108,7 @@ export default function AuthPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {/* unchanged form layout */}
               <form onSubmit={handleSubmit} className="space-y-4">
                 {!isLogin && (
                   <div className="relative">
