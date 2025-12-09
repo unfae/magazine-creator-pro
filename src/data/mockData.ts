@@ -1,0 +1,83 @@
+import { Template, Magazine } from '@/types/magazine';
+
+export const templates: Template[] = [
+  {
+    id: '1',
+    name: 'Elegance',
+    description: 'A sophisticated layout perfect for fashion and lifestyle photography',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=500&fit=crop',
+    category: 'Fashion',
+    pageCount: 12,
+    requiredPhotos: 8,
+  },
+  {
+    id: '2',
+    name: 'Wanderlust',
+    description: 'Capture your travel adventures with stunning full-bleed layouts',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=400&h=500&fit=crop',
+    category: 'Travel',
+    pageCount: 16,
+    requiredPhotos: 12,
+  },
+  {
+    id: '3',
+    name: 'Memories',
+    description: 'Classic family album design with timeless appeal',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1511895426328-dc8714191300?w=400&h=500&fit=crop',
+    category: 'Family',
+    pageCount: 20,
+    requiredPhotos: 15,
+  },
+  {
+    id: '4',
+    name: 'Minimalist',
+    description: 'Clean and modern with generous whitespace for portfolio work',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=500&fit=crop',
+    category: 'Portfolio',
+    pageCount: 10,
+    requiredPhotos: 6,
+  },
+  {
+    id: '5',
+    name: 'Celebration',
+    description: 'Perfect for weddings and special occasions',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=500&fit=crop',
+    category: 'Wedding',
+    pageCount: 24,
+    requiredPhotos: 20,
+  },
+  {
+    id: '6',
+    name: 'Urban',
+    description: 'Bold and contemporary for street photography',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400&h=500&fit=crop',
+    category: 'Street',
+    pageCount: 14,
+    requiredPhotos: 10,
+  },
+];
+
+export const sampleMagazines: Magazine[] = [
+  {
+    id: '1',
+    title: 'Summer Memories 2024',
+    templateId: '2',
+    templateName: 'Wanderlust',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=500&fit=crop',
+    status: 'completed',
+    createdAt: new Date('2024-06-15'),
+    updatedAt: new Date('2024-06-20'),
+    photos: [],
+  },
+  {
+    id: '2',
+    title: 'My Portfolio',
+    templateId: '4',
+    templateName: 'Minimalist',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=500&fit=crop',
+    status: 'draft',
+    createdAt: new Date('2024-07-01'),
+    updatedAt: new Date('2024-07-05'),
+    photos: [],
+  },
+];
