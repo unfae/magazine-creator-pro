@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { Bell, Moon, Download, HelpCircle, FileText, Shield } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTheme } from "next-themes";
+
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
@@ -12,6 +14,9 @@ export default function SettingsPage() {
     darkMode: false,
     autoSave: true,
   });
+
+  const { theme, setTheme } = useTheme();
+
 
   const handleToggle = (key: keyof typeof settings) => {
     setSettings({ ...settings, [key]: !settings[key] });
@@ -84,8 +89,8 @@ export default function SettingsPage() {
               <p className="text-sm text-muted-foreground">Switch to dark theme</p>
             </div>
             <Switch
-              checked={settings.darkMode}
-              onCheckedChange={() => handleToggle('darkMode')}
+              checked={theme === "dark"}
+              onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
             />
           </div>
         </CardContent>
