@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase'; // 👈 ADDED
+import { supabase } from '@/lib/supabase';
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -27,22 +27,32 @@ export default function AuthPage() {
       let authResponse;
 
       if (isLogin) {
+        // LOGIN FLOW
         authResponse = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
         });
       } else {
+        // SIGN UP FLOW
         authResponse = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
         });
 
-        // Create profile row on sign up
-        if (!authResponse.error) {
-          await supabase.from('profiles').insert({
-            id: authResponse.data.user?.id,
-            full_name: formData.name,
-          });
+        // Insert profile row ONLY if user exists immediately (email confirm disabled)
+        const user = authResponse.data?.user;
+        if (user) {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              full_name: formData.name,
+              email: user.email,
+            });
+
+          if (profileError) {
+            console.error('Profile insert error:', profileError);
+          }
         }
       }
 
@@ -53,7 +63,9 @@ export default function AuthPage() {
 
       toast.success(isLogin ? 'Welcome back!' : 'Account created successfully!');
       navigate('/dashboard');
+
     } catch (err: any) {
+      console.error(err);
       toast.error('Something went wrong, please try again.');
     } finally {
       setIsLoading(false);
@@ -62,7 +74,6 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* --- existing code unchanged below --- */}
       {/* Left Side */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-foreground to-charcoal-light" />
@@ -108,7 +119,6 @@ export default function AuthPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* unchanged form layout */}
               <form onSubmit={handleSubmit} className="space-y-4">
                 {!isLogin && (
                   <div className="relative">
