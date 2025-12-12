@@ -483,8 +483,8 @@ export default function CreateMagazinePage() {
                     'bg-border'
                   )}
                   style={{
-                    width: 1000 * 0.5, // scaled preview (50% of full width)
-                    height: 1415 * 0.5,
+                    width: 1000 * 0.3, // scaled preview (50% of full width)
+                    height: 1415 * 0.3,
                     backgroundImage: `url(${bgUrl})`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
