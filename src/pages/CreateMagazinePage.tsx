@@ -496,7 +496,7 @@ export default function CreateMagazinePage() {
                     const slotUrl =
                       (userImages[pg.page_number] || {})[ib.id] || '';
 
-                    const scale = 0.3;
+                    const scale = 0.5;
 
                     return (
                       <div
@@ -538,7 +538,7 @@ export default function CreateMagazinePage() {
 
                   {/* Render text placeholders (inline editable) */}
                   {(layout.textBlocks ?? []).map((tb: TextBlock) => {
-                    const scale = 0.3;
+                    const scale = 0.5;
                     const currentText =
                       (userTexts[pg.page_number] || {})[tb.id] ??
                       tb.defaultText ??
