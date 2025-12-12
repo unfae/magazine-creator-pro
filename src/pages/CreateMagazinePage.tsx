@@ -493,21 +493,29 @@ export default function CreateMagazinePage() {
                 >
                   {/* Render image placeholders */}
                   {(layout.imageBlocks ?? []).map((ib: ImageBlock) => {
-                    const slotUrl = (userImages[pg.page_number] || {})[ib.id] || '';
-                    const scale = 0.5;
+                    const slotUrl =
+                      (userImages[pg.page_number] || {})[ib.id] || '';
+
+                    const scale = 0.3;
+
                     return (
                       <div
                         key={ib.id}
-                        className="absolute overflow-hidden rounded-sm bg-gray-100/30 flex items-center justify-center"
+                        className="absolute overflow-hidden rounded-sm bg-gray-100/30 flex items-center justify-center cursor-pointer"
                         style={{
                           left: ib.x * scale,
                           top: ib.y * scale,
                           width: ib.width * scale,
                           height: ib.height * scale,
+                          zIndex: ib.zIndex ?? 1, // ← NEW
                         }}
+                        onClick={() => handleReplaceSlotClick(pg.page_number, ib.id)}
                       >
                         {slotUrl ? (
-                          <img src={slotUrl} className="w-full h-full object-cover" />
+                          <img
+                            src={slotUrl}
+                            className="w-full h-full object-cover"
+                          />
                         ) : (
                           <div className="text-xs text-muted-foreground text-center p-2">
                             Click to add image
@@ -527,17 +535,28 @@ export default function CreateMagazinePage() {
                     );
                   })}
 
+
                   {/* Render text placeholders (inline editable) */}
                   {(layout.textBlocks ?? []).map((tb: TextBlock) => {
-                    const scale = 0.5;
-                    const currentText = (userTexts[pg.page_number] || {})[tb.id] ?? tb.defaultText ?? '';
+                    const scale = 0.3;
+                    const currentText =
+                      (userTexts[pg.page_number] || {})[tb.id] ??
+                      tb.defaultText ??
+                      '';
+
                     return (
                       <div
                         key={tb.id}
                         contentEditable
                         suppressContentEditableWarning
-                        onInput={(e: any) => handleTextChange(pg.page_number, tb.id, e.currentTarget.textContent)}
-                        className="absolute"
+                        onBlur={(e: any) =>
+                          handleTextChange(
+                            pg.page_number,
+                            tb.id,
+                            e.currentTarget.textContent
+                          )
+                        }
+                        className="absolute outline-none"
                         style={{
                           left: tb.x * scale,
                           top: tb.y * scale,
@@ -547,12 +566,14 @@ export default function CreateMagazinePage() {
                           color: tb.color ?? 'inherit',
                           textAlign: tb.align as any,
                           overflow: 'hidden',
+                          zIndex: tb.zIndex ?? 2, // ← NEW
                         }}
                       >
                         {currentText}
                       </div>
                     );
                   })}
+
                 </div>
               );
             })}
