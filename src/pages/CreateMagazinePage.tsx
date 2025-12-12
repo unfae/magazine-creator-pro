@@ -494,7 +494,10 @@ export default function CreateMagazinePage() {
                   {/* Render image placeholders */}
                   {(layout.imageBlocks ?? []).map((ib: ImageBlock) => {
                     const slotUrl =
-                      (userImages[pg.page_number] || {})[ib.id] || '';
+                      (userImages[pg.page_number] || {})[ib.id] ||
+                      ib.defaultImageUrl ||
+                      "";
+
 
                     const scale = 0.5;
 
@@ -508,6 +511,8 @@ export default function CreateMagazinePage() {
                           width: ib.width * scale,
                           height: ib.height * scale,
                           zIndex: ib.zIndex ?? 1, // ← NEW
+                          transform: `rotate(${ib.rotate ?? 0}deg)`,
+
                         }}
                         onClick={() => handleReplaceSlotClick(pg.page_number, ib.id)}
                       >
@@ -522,15 +527,18 @@ export default function CreateMagazinePage() {
                           </div>
                         )}
 
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleReplaceSlotClick(pg.page_number, ib.id);
-                          }}
-                          className="absolute right-1 top-1 w-7 h-7 rounded-full bg-foreground/80 text-background flex items-center justify-center opacity-90"
-                        >
-                          <Image className="h-4 w-4" />
-                        </button>
+                        {ib.editable !== false && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleReplaceSlotClick(pg.page_number, ib.id);
+                            }}
+                            className="absolute right-1 top-1 w-7 h-7 rounded-full bg-foreground/80 text-background flex items-center justify-center opacity-90"
+                          >
+                            <Image className="h-4 w-4" />
+                          </button>
+                        )}
+
                       </div>
                     );
                   })}
@@ -567,6 +575,8 @@ export default function CreateMagazinePage() {
                           textAlign: tb.align as any,
                           overflow: 'hidden',
                           zIndex: tb.zIndex ?? 2, // ← NEW
+                          transform: `rotate(${tb.rotate ?? 0}deg)`
+
                         }}
                       >
                         {currentText}
