@@ -593,8 +593,8 @@ export default function CreateMagazinePage() {
                     'bg-border'
                   )}
                   style={{
-                    width: 1000 * PREVIEW_SCALE,
-                    height: 1415 * PREVIEW_SCALE,
+                    width: PAGE_WIDTH,
+                    height: PAGE_HEIGHT,
                     backgroundImage: `url(${bgUrl})`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
@@ -613,10 +613,10 @@ export default function CreateMagazinePage() {
                         key={ib.id}
                         className="absolute overflow-hidden rounded-sm bg-gray-100/30 flex items-center justify-center"
                         style={{
-                          left: ib.x * PREVIEW_SCALE,
-                          top: ib.y * PREVIEW_SCALE,
-                          width: ib.width * PREVIEW_SCALE,
-                          height: ib.height * PREVIEW_SCALE,
+                          left: ib.x,
+                          top: ib.y,
+                          width: ib.width,
+                          height: ib.height,
                           zIndex: ib.zIndex ?? 1,
                           transform: `rotate(${ib.rotate ?? 0}deg)`,
                         }}
@@ -680,11 +680,11 @@ export default function CreateMagazinePage() {
                         }}
                         className={cn('absolute', !isEditable && 'select-none')}
                         style={{
-                          left: tb.x * PREVIEW_SCALE,
-                          top: tb.y * PREVIEW_SCALE,
-                          width: tb.width * PREVIEW_SCALE,
-                          height: tb.height * PREVIEW_SCALE,
-                          fontSize: ((tb.fontSize ?? 16) as number) * PREVIEW_SCALE,
+                          left: tb.x,
+                          top: tb.y,
+                          width: tb.width,
+                          height: tb.height,
+                          fontSize: ((tb.fontSize ?? 16) as number),
                           color: tb.color ?? 'inherit',
                           textAlign: tb.align as any,
                           overflow: 'hidden',
