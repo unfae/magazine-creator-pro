@@ -590,127 +590,133 @@ export default function CreateMagazinePage() {
 
               return (
                 <div
-                  id={`page-${pg.page_number}`}
                   key={pg.id}
-                  className={cn(
-                    'relative rounded-lg overflow-hidden flex-shrink-0',
-                    'bg-border'
-                  )}
+                  className="flex-shrink-0"
                   style={{
-                    width: PAGE_WIDTH,
-                    height: PAGE_HEIGHT,
-                    backgroundImage: `url(${bgUrl})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    transform: `scale(${PREVIEW_SCALE})`,
-                    transformOrigin: 'top left',
+                    width: PAGE_WIDTH * PREVIEW_SCALE,
+                    height: PAGE_HEIGHT * PREVIEW_SCALE,
                   }}
                   onClick={() => setCurrentPageIndex(idx)}
                 >
-                  {/* Render image placeholders */}
-                  {(layout.imageBlocks ?? []).map((ib: ImageBlock) => {
-                    const slotUrl =
-                      (userImages[pg.page_number] || {})[ib.id] ||
-                      ib.defaultImageUrl ||
-                      "";
+                  <div
+                    id={`page-${pg.page_number}`}
+                    className="relative rounded-lg overflow-hidden bg-border"
+                    style={{
+                      width: PAGE_WIDTH,
+                      height: PAGE_HEIGHT,
+                      backgroundImage: `url(${bgUrl})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      transform: `scale(${PREVIEW_SCALE})`,
+                      transformOrigin: 'top left',
+                    }}
+                  >
 
-                    return (
-                      <div
-                        key={ib.id}
-                        className="absolute overflow-hidden rounded-sm bg-gray-100/30 flex items-center justify-center"
-                        style={{
-                          left: ib.x,
-                          top: ib.y,
-                          width: ib.width,
-                          height: ib.height,
-                          zIndex: ib.zIndex ?? 1,
-                          transform: `rotate(${ib.rotate ?? 0}deg)`,
-                        }}
-                        // only allow click to replace for editable slots
-                        onClick={() => {
-                          if (ib.editable === false) return;
-                          handleReplaceSlotClick(pg.page_number, ib.id);
-                        }}
-                      >
-                        {slotUrl ? (
-                          <img
-                            src={slotUrl}
-                            crossOrigin="anonymous"
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                              objectPosition: 'center',
-                            }}
-                          />
+                    {/* Render image placeholders */}
+                    {(layout.imageBlocks ?? []).map((ib: ImageBlock) => {
+                      const slotUrl =
+                        (userImages[pg.page_number] || {})[ib.id] ||
+                        ib.defaultImageUrl ||
+                        "";
 
-                        ) : (
-                          <div className="text-xs text-muted-foreground text-center p-2">
-                            {ib.editable === false ? 'Locked image' : 'Click to add image'}
-                          </div>
-                        )}
+                      return (
+                        <div
+                          key={ib.id}
+                          className="absolute overflow-hidden rounded-sm bg-gray-100/30 flex items-center justify-center"
+                          style={{
+                            left: ib.x,
+                            top: ib.y,
+                            width: ib.width,
+                            height: ib.height,
+                            zIndex: ib.zIndex ?? 1,
+                            transform: `rotate(${ib.rotate ?? 0}deg)`,
+                          }}
+                          // only allow click to replace for editable slots
+                          onClick={() => {
+                            if (ib.editable === false) return;
+                            handleReplaceSlotClick(pg.page_number, ib.id);
+                          }}
+                        >
+                          {slotUrl ? (
+                            <img
+                              src={slotUrl}
+                              crossOrigin="anonymous"
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                objectPosition: 'center',
+                              }}
+                            />
 
-                        {ib.editable !== false && (
-                          <button
-                            onClick={(e) => {
+                          ) : (
+                            <div className="text-xs text-muted-foreground text-center p-2">
+                              {ib.editable === false ? 'Locked image' : 'Click to add image'}
+                            </div>
+                          )}
+
+                          {ib.editable !== false && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReplaceSlotClick(pg.page_number, ib.id);
+                              }}
+                              className="absolute right-1 top-1 w-7 h-7 rounded-full bg-foreground/80 text-background flex items-center justify-center opacity-90"
+                              title="Replace image"
+                            >
+                              <Image className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Render text placeholders (inline editable) */}
+                    {(layout.textBlocks ?? []).map((tb: TextBlock) => {
+                      const currentText =
+                        (userTexts[pg.page_number] || {})[tb.id] ??
+                        tb.defaultText ??
+                        '';
+
+                      const isEditable = tb.editable !== false;
+
+                      return (
+                        <div
+                          key={tb.id}
+                          contentEditable={isEditable}
+                          suppressContentEditableWarning
+                          onBlur={(e: any) => {
+                            if (!isEditable) return;
+                            handleTextChange(pg.page_number, tb.id, e.currentTarget.textContent);
+                          }}
+                          className={cn('absolute', !isEditable && 'select-none')}
+                          style={{
+                            left: tb.x,
+                            top: tb.y,
+                            width: tb.width,
+                            height: tb.height,
+                            fontSize: ((tb.fontSize ?? 16) as number),
+                            color: tb.color ?? 'inherit',
+                            textAlign: tb.align as any,
+                            overflow: 'hidden',
+                            zIndex: tb.zIndex ?? 2,
+                            transform: `rotate(${tb.rotate ?? 0}deg)`,
+                            fontWeight: tb.fontWeight ?? undefined,
+                          }}
+                          // don't allow pointer events for non-editable text to prevent accidental focus
+                          onClick={(e) => {
+                            if (tb.editable === false) {
+                              e.preventDefault();
                               e.stopPropagation();
-                              handleReplaceSlotClick(pg.page_number, ib.id);
-                            }}
-                            className="absolute right-1 top-1 w-7 h-7 rounded-full bg-foreground/80 text-background flex items-center justify-center opacity-90"
-                            title="Replace image"
-                          >
-                            <Image className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
+                            }
+                          }}
+                        >
+                          {currentText}
+                        </div>
+                      );
+                    })}
 
-                  {/* Render text placeholders (inline editable) */}
-                  {(layout.textBlocks ?? []).map((tb: TextBlock) => {
-                    const currentText =
-                      (userTexts[pg.page_number] || {})[tb.id] ??
-                      tb.defaultText ??
-                      '';
-
-                    const isEditable = tb.editable !== false;
-
-                    return (
-                      <div
-                        key={tb.id}
-                        contentEditable={isEditable}
-                        suppressContentEditableWarning
-                        onBlur={(e: any) => {
-                          if (!isEditable) return;
-                          handleTextChange(pg.page_number, tb.id, e.currentTarget.textContent);
-                        }}
-                        className={cn('absolute', !isEditable && 'select-none')}
-                        style={{
-                          left: tb.x,
-                          top: tb.y,
-                          width: tb.width,
-                          height: tb.height,
-                          fontSize: ((tb.fontSize ?? 16) as number),
-                          color: tb.color ?? 'inherit',
-                          textAlign: tb.align as any,
-                          overflow: 'hidden',
-                          zIndex: tb.zIndex ?? 2,
-                          transform: `rotate(${tb.rotate ?? 0}deg)`,
-                          fontWeight: tb.fontWeight ?? undefined,
-                        }}
-                        // don't allow pointer events for non-editable text to prevent accidental focus
-                        onClick={(e) => {
-                          if (tb.editable === false) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }
-                        }}
-                      >
-                        {currentText}
-                      </div>
-                    );
-                  })}
-
+                  </div>
                 </div>
               );
             })}
