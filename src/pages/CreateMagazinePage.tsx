@@ -472,50 +472,81 @@ export default function CreateMagazinePage() {
     }
 
     setIsGenerating(true);
+
     try {
-      // dynamic imports so build doesn't break if user hasn't installed them yet
       const html2canvasModule = await import('html2canvas');
-      const html2canvas = (html2canvasModule as any).default ?? html2canvasModule;
+      const html2canvas = html2canvasModule.default;
       const { jsPDF } = await import('jspdf');
 
+      const PAGE_WIDTH = 1000;
+      const PAGE_HEIGHT = 1415;
+      const SCALE = 3; // 🔥 High DPI (300%)
+
       const pdf = new jsPDF({
-        unit: 'pt',
-        format: [1000, 1415], // points = px for simplicity (approx)
+        orientation: 'portrait',
+        unit: 'px',
+        format: [PAGE_WIDTH, PAGE_HEIGHT],
+        compress: true,
       });
 
-      // iterate pages in order
       for (let i = 0; i < templatePages.length; i++) {
         const pg = templatePages[i];
-        const el = document.getElementById(`page-${pg.page_number}`);
-        if (!el) continue;
+        const original = document.getElementById(`page-${pg.page_number}`);
+        if (!original) continue;
 
-        // ensure images load with CORS where possible
-        const canvas = await html2canvas(el, {
+        // Clone node to avoid scaling issues
+        const clone = original.cloneNode(true) as HTMLElement;
+
+        clone.style.width = `${PAGE_WIDTH}px`;
+        clone.style.height = `${PAGE_HEIGHT}px`;
+        clone.style.transform = 'none';
+        clone.style.position = 'absolute';
+        clone.style.left = '-99999px';
+        clone.style.top = '0';
+
+        document.body.appendChild(clone);
+
+        const canvas = await html2canvas(clone, {
+          scale: SCALE,
           useCORS: true,
-          allowTaint: false,
-          logging: false,
-          imageTimeout: 20000,
+          backgroundColor: '#ffffff',
+          imageTimeout: 30000,
         });
 
-        const imgData = canvas.toDataURL('image/png');
-        // for jsPDF, convert to 'JPEG' may make file smaller, but we'll use PNG for quality
-        const imgProps = pdf.getImageProperties(imgData);
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+        document.body.removeChild(clone);
+
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
 
         if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+        pdf.addImage(
+          imgData,
+          'JPEG',
+          0,
+          0,
+          PAGE_WIDTH,
+          PAGE_HEIGHT,
+          undefined,
+          'FAST'
+        );
       }
 
-      pdf.save(`${(title || 'magazine').replace(/\s+/g, '_')}.pdf`);
-      toast.success('PDF exported');
+      // 🔥 Use TEMPLATE NAME as filename
+      const fileName =
+        (template?.name || 'magazine')
+          .replace(/\s+/g, '_')
+          .toLowerCase() + '.pdf';
+
+      pdf.save(fileName);
+      toast.success('High-quality PDF exported');
     } catch (err) {
       console.error(err);
-      toast.error('Failed to export PDF. Make sure html2canvas & jspdf are installed.');
+      toast.error('Failed to export PDF');
     } finally {
       setIsGenerating(false);
     }
   };
+
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
@@ -598,10 +629,15 @@ export default function CreateMagazinePage() {
                         {slotUrl ? (
                           <img
                             src={slotUrl}
-                            className="w-full h-full object-cover"
                             crossOrigin="anonymous"
-                            alt={ib.id}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              objectPosition: 'center',
+                            }}
                           />
+
                         ) : (
                           <div className="text-xs text-muted-foreground text-center p-2">
                             {ib.editable === false ? 'Locked image' : 'Click to add image'}
