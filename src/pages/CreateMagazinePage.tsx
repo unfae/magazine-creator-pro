@@ -16,6 +16,7 @@ type TextBlock = {
   height: number;
   defaultText?: string;
   fontSize?: number;
+  fontFamily?: string; // ✅ ADD THIS
   fontWeight?: number | string;
   color?: string;
   align?: string;
@@ -702,6 +703,7 @@ export default function CreateMagazinePage() {
                             zIndex: tb.zIndex ?? 2,
                             transform: `rotate(${tb.rotate ?? 0}deg)`,
                             fontWeight: tb.fontWeight ?? undefined,
+                            fontFamily: tb.fontFamily ?? 'inherit',
                           }}
                           // don't allow pointer events for non-editable text to prevent accidental focus
                           onClick={(e) => {
