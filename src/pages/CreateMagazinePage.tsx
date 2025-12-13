@@ -74,6 +74,10 @@ export default function CreateMagazinePage() {
 
   // preview scale (renders pages smaller in the carousel)
   const PREVIEW_SCALE = 0.3;
+  const PAGE_WIDTH = 1000;
+  const PAGE_HEIGHT = 1415;
+  
+
 
   useEffect(() => {
     let mounted = true;
