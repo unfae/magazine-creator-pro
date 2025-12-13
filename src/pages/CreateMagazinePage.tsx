@@ -602,6 +602,8 @@ export default function CreateMagazinePage() {
                     backgroundImage: `url(${bgUrl})`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
+                    transform: `scale(${PREVIEW_SCALE})`,
+                    transformOrigin: 'top left',
                   }}
                   onClick={() => setCurrentPageIndex(idx)}
                 >
