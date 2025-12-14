@@ -18,6 +18,8 @@ type TextBlock = {
   fontSize?: number;
   fontFamily?: string; // ✅ ADD THIS
   fontWeight?: number | string;
+  lineHeight?: number;
+  letterSpacing?: number;
   color?: string;
   align?: string;
   zIndex?: number;
@@ -32,6 +34,7 @@ type ImageBlock = {
   width: number;
   height: number;
   zIndex?: number;
+  borderRadius?: number;
   rotate?: number;
   defaultImageUrl?: string;
   editable?: boolean;
@@ -629,13 +632,18 @@ export default function CreateMagazinePage() {
                       return (
                         <div
                           key={ib.id}
-                          className="absolute overflow-hidden rounded-sm bg-gray-100/30 flex items-center justify-center"
+                          className={cn(
+                            "absolute overflow-hidden rounded-sm flex items-center justify-center",
+                            !slotUrl && ib.editable !== false && "bg-gray-100/30"
+                          )}
+
                           style={{
                             left: ib.x,
                             top: ib.y,
                             width: ib.width,
                             height: ib.height,
                             zIndex: ib.zIndex ?? 1,
+                            borderRadius: ib.borderRadius ? `${ib.borderRadius}px` : undefined,
                             transform: `rotate(${ib.rotate ?? 0}deg)`,
                           }}
                           // only allow click to replace for editable slots
@@ -653,6 +661,7 @@ export default function CreateMagazinePage() {
                                 height: '100%',
                                 objectFit: 'cover',
                                 objectPosition: 'center',
+                                borderRadius: ib.borderRadius ? `${ib.borderRadius}px` : undefined,
                               }}
                             />
 
@@ -706,6 +715,8 @@ export default function CreateMagazinePage() {
                             fontSize: ((tb.fontSize ?? 16) as number),
                             color: tb.color ?? 'inherit',
                             textAlign: tb.align as any,
+                            lineHeight: tb.lineHeight ? `${tb.lineHeight}px` : undefined,
+                            letterSpacing: tb.letterSpacing ? `${tb.letterSpacing}px` : undefined,
                             overflow: 'hidden',
                             zIndex: tb.zIndex ?? 2,
                             transform: `rotate(${tb.rotate ?? 0}deg)`,
