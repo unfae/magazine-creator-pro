@@ -849,9 +849,7 @@ export default function CreateMagazinePage() {
 
       {/* Save / Generate */}
       <div className="flex justify-end gap-4">
-        <Button variant="link" onClick={() => navigate('/templates')}>
-          Cancel
-        </Button>
+        
         <Button
           variant="outline"
           size="lg"
@@ -871,7 +869,7 @@ export default function CreateMagazinePage() {
           )}
         </Button>
 
-        <Button size= "lg" onClick={handleExportPDF} disabled={isGenerating || templatePages.length === 0}>
+        <Button variant = "gold" size= "lg" onClick={handleExportPDF} disabled={isGenerating || templatePages.length === 0}>
             <Download className="h-4 w-4 mr-2" />
             Export PDF
         </Button>
