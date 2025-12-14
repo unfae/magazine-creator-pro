@@ -27,6 +27,13 @@ type TextBlock = {
   editable?: boolean;
 };
 
+type ImageBorder = {
+  width?: number;         // px
+  color?: string;         // any valid CSS color: "#fff", "rgba(...)", "red"
+  style?: 'solid' | 'dashed' | 'dotted' | 'double' | 'none';
+};
+
+
 type ImageBlock = {
   id: string;
   x: number;
@@ -37,6 +44,7 @@ type ImageBlock = {
   borderRadius?: number;
   rotate?: number;
   defaultImageUrl?: string;
+  border?: ImageBorder;
   editable?: boolean;
 };
 
@@ -635,6 +643,10 @@ export default function CreateMagazinePage() {
                     {/* Render image placeholders */}
                     {(layout.imageBlocks ?? []).map((ib: ImageBlock) => {
                       const slotUrl = (userImages[pg.page_number] || {})[ib.id] || ib.defaultImageUrl || '';
+                      
+                      const bw = ib.border?.width;
+                      const bc = ib.border?.color;
+                      const bs = ib.border?.style ?? 'solid';
 
                       return (
                         <div
@@ -644,6 +656,9 @@ export default function CreateMagazinePage() {
                             'absolute overflow-hidden rounded-sm flex items-center justify-center',
                             !slotUrl && ib.editable !== false && 'bg-gray-100/30'
                           )}
+
+                          
+
                           style={{
                             left: ib.x,
                             top: ib.y,
@@ -652,6 +667,8 @@ export default function CreateMagazinePage() {
                             zIndex: ib.zIndex ?? 1,
                             borderRadius: ib.borderRadius ? `${ib.borderRadius}px` : undefined,
                             transform: `rotate(${ib.rotate ?? 0}deg)`,
+                            border: bw && bc ? `${bw}px ${bs} ${bc}` : undefined,
+
                           }}
                           // only allow click to replace for editable slots
                           onClick={() => {
