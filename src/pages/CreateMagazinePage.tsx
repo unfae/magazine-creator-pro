@@ -501,6 +501,9 @@ export default function CreateMagazinePage() {
 
         // Clone node to avoid scaling issues
         const clone = original.cloneNode(true) as HTMLElement;
+        // Remove UI-only elements (buttons, icons, etc.)
+
+
 
         clone.style.width = `${PAGE_WIDTH}px`;
         clone.style.height = `${PAGE_HEIGHT}px`;
@@ -509,12 +512,15 @@ export default function CreateMagazinePage() {
         clone.style.left = '-99999px';
         clone.style.top = '0';
 
+        
+        clone.querySelectorAll('[data-ui="true"]').forEach(el => el.remove());
+
         document.body.appendChild(clone);
 
         const canvas = await html2canvas(clone, {
           scale: SCALE,
           useCORS: true,
-          backgroundColor: '#ffffff',
+          backgroundColor: null,
           imageTimeout: 30000,
         });
 
@@ -658,6 +664,7 @@ export default function CreateMagazinePage() {
 
                           {ib.editable !== false && (
                             <button
+                              data-ui="true"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleReplaceSlotClick(pg.page_number, ib.id);
