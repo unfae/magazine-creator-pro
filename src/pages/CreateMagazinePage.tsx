@@ -522,6 +522,8 @@ export default function CreateMagazinePage() {
         clone.style.height = `${PAGE_HEIGHT}px`;
         clone.style.transform = 'none';
         clone.style.position = 'absolute';
+        clone.style.objectFit = 'cover';
+        clone.style.objectPosition = 'center';
         clone.style.left = '-99999px';
         clone.style.top = '0';
 
