@@ -506,6 +506,16 @@ export default function CreateMagazinePage() {
         const clone = original.cloneNode(true) as HTMLElement;
         // Remove UI-only elements (buttons, icons, etc.)
 
+        // ✅ FORCE correct image fitting for export (fixes distortion)
+        clone.querySelectorAll('img').forEach((img) => {
+          const el = img as HTMLImageElement;
+
+          el.style.objectFit = 'cover';
+          el.style.objectPosition = 'center';
+          el.style.width = '100%';
+          el.style.height = '100%';
+          el.style.display = 'block';
+        });
 
 
         clone.style.width = `${PAGE_WIDTH}px`;
@@ -546,13 +556,26 @@ export default function CreateMagazinePage() {
       }
 
       // 🔥 Use TEMPLATE NAME as filename
-      const fileName =
-        (template?.name || 'magazine')
-          .replace(/\s+/g, '_')
-          .toLowerCase() + '.pdf';
+      
+      // ✅ Build filename from authenticated user + template
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      pdf.save(fileName);
-      toast.success('High-quality PDF exported');
+      const userName =
+        user?.user_metadata?.full_name ||
+        user?.email?.split('@')[0] ||
+        'user';
+
+      const safe = (s: string) =>
+        s.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
+      pdf.save(
+        `${safe(userName)}_${safe(template.name)}_magazine.pdf`
+      );
+
+
+      toast.success('Magazine exported successfully');
     } catch (err) {
       console.error(err);
       toast.error('Failed to export PDF');
@@ -809,10 +832,7 @@ export default function CreateMagazinePage() {
               <Button variant="gold" onClick={handleUploadAll} disabled={isGenerating || filesRef.current.length === 0}>
                 Upload & Apply
               </Button>
-              <Button variant="outline" onClick={handleExportPDF} disabled={isGenerating || templatePages.length === 0}>
-                <Download className="h-4 w-4 mr-2" />
-                Export PDF
-              </Button>
+              
             </div>
           </div>
         </div>
@@ -829,11 +849,11 @@ export default function CreateMagazinePage() {
 
       {/* Save / Generate */}
       <div className="flex justify-end gap-4">
-        <Button variant="outline" onClick={() => navigate('/templates')}>
+        <Button variant="link" onClick={() => navigate('/templates')}>
           Cancel
         </Button>
         <Button
-          variant="gold"
+          variant="outline"
           size="lg"
           onClick={handleGenerate}
           disabled={isGenerating || !title.trim()}
@@ -850,6 +870,12 @@ export default function CreateMagazinePage() {
             </span>
           )}
         </Button>
+
+        <Button size= "lg" onClick={handleExportPDF} disabled={isGenerating || templatePages.length === 0}>
+            <Download className="h-4 w-4 mr-2" />
+            Export PDF
+        </Button>
+
       </div>
     </div>
   );
