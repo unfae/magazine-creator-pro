@@ -488,7 +488,7 @@ export default function CreateMagazinePage() {
 
       const PAGE_WIDTH = 1000;
       const PAGE_HEIGHT = 1415;
-      const SCALE = 3; // 🔥 High DPI (300%)
+      const SCALE = 1; // 🔥 High DPI (300%)
 
       const pdf = new jsPDF({
         orientation: 'portrait',
