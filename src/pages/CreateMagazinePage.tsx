@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Upload, X, Image, ArrowLeft, Sparkles, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTemplateAccess } from '@/hooks/useTemplateAccess'
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 
@@ -186,8 +187,16 @@ export default function CreateMagazinePage() {
     return `${origin}/storage/v1/object/public/template_pages/${templateSlug}/${pageIndex}.png`;
   };
 
+  const { hasTemplateAccess, openPaywall } =
+    useTemplateAccess(template)
+
   // Bulk file select (unchanged UI)
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!hasTemplateAccess) {
+      openPaywall();
+      return;
+    }
+
     const files = e.target.files;
     if (!files) return;
 
@@ -342,7 +351,7 @@ export default function CreateMagazinePage() {
     }
 
     if (!hasTemplateAccess) {
-      openTemplatePayment(); // from your guard
+      openPaywall(); // from your guard
       return;
     }
 
