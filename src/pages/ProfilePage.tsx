@@ -99,7 +99,7 @@ export default function ProfilePage() {
 
         const { data: uploadData, error: uploadError } =
           await supabase.storage
-            .from('magazine-assets')
+            .from('avatars')
             .upload(filePath, file, { upsert: true });
 
         if (uploadError) {
@@ -110,7 +110,7 @@ export default function ProfilePage() {
         }
 
         const { publicUrl } = supabase.storage
-          .from('magazine-assets')
+          .from('avatars')
           .getPublicUrl(uploadData.path);
 
         avatarUrl = publicUrl;
