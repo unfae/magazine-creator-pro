@@ -606,7 +606,12 @@ export default function CreateMagazinePage() {
 
       {/* Header */}
       <div className="mb-6 animate-fade-in">
-        <h1 className="text-editorial-md mb-2">Create with {template.name}</h1>
+        <h1 className="text-editorial-md mb-2">Create Your {template.name} Magazine</h1>
+        
+        <p className="text-muted-foreground">
+          {template.description}
+        </p>
+
         <p className="text-muted-foreground">
           {template.page_count} pages • {template.required_photos} photos required
         </p>
