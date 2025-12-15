@@ -612,9 +612,11 @@ export default function CreateMagazinePage() {
           {template.description}
         </p>
 
-        <p className="text-muted-foreground">
-          {template.page_count} pages • {template.required_photos} photos required
-        </p>
+        <div className= "mt-3">
+          <p className="text-muted-foreground">
+            {template.page_count} pages • {template.required_photos} photos required
+          </p>
+        </div>
       </div>
 
       {/* Template Pages Carousel */}
