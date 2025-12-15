@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
+import { Footer } from './Footer';
 import { ThemeProvider } from "@/components/theme-provider";
 
 export function AppLayout() {
@@ -10,6 +11,7 @@ export function AppLayout() {
         <main className="animate-fade-in">
           <Outlet />
         </main>
+        <Footer />
       </div>
     </ThemeProvider>
   );
