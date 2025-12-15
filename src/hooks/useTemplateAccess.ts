@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
-export function useTemplateAccess(template: any) {
+export function useTemplateAccess(templatePay: any) {
   const [hasAccess, setHasAccess] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -18,7 +18,7 @@ export function useTemplateAccess(template: any) {
       }
 
       // Free template
-      if (!template.price || template.price === 0) {
+      if (!templatePay.price || templatePay.price === 0) {
         setHasAccess(true)
         setLoading(false)
         return
