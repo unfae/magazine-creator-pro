@@ -61,6 +61,9 @@ type TemplatePage = {
 };
 
 export default function CreateMagazinePage() {
+   const { hasTemplateAccess, openPaywall } =
+    useTemplateAccess(templatePay)
+  
   const { templateId } = useParams();
   const navigate = useNavigate();
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
@@ -187,8 +190,7 @@ export default function CreateMagazinePage() {
     return `${origin}/storage/v1/object/public/template_pages/${templateSlug}/${pageIndex}.png`;
   };
 
-  const { hasTemplateAccess, openPaywall } =
-    useTemplateAccess(template)
+ 
 
   // Bulk file select (unchanged UI)
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
