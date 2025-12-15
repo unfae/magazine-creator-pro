@@ -792,85 +792,85 @@ export default function CreateMagazinePage() {
       </div>
 
       {/* Details + Bulk Upload */}
-      <TemplateAccessGuard template={template}>
+    
 
-        <Card className="mb-6">
-          <div className="p-6">
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">Magazine Title</label>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Summer Memories 2025"
-                className="max-w-md"
-              />
+      <Card className="mb-6">
+        <div className="p-6">
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Magazine Title</label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g., Summer Memories 2025"
+              className="max-w-md"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Upload Photos (bulk)</label>
+            <p className="text-sm text-muted-foreground mb-3">
+              Upload all your photos and we will apply them to the template automatically. You can adjust each page
+              afterwards.
+            </p>
+
+            <input
+              ref={bulkFileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+
+            <div
+              onClick={() => bulkFileInputRef.current?.click()}
+              className={cn(
+                'border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all',
+                photos.length === 0 ? 'border-border' : 'border-gold/30'
+              )}
+            >
+              <div className="flex flex-col items-center gap-2">
+                <Upload className="h-6 w-6 text-muted-foreground" />
+                <p className="font-medium">Click to upload photos</p>
+                <p className="text-sm text-muted-foreground">{photos.length} selected</p>
+              </div>
             </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">Upload Photos (bulk)</label>
-              <p className="text-sm text-muted-foreground mb-3">
-                Upload all your photos and we will apply them to the template automatically. You can adjust each page
-                afterwards.
-              </p>
+            {photos.length > 0 && (
+              <div className="grid grid-cols-4 gap-3 mt-4">
+                {photos.map((p, i) => (
+                  <div key={i} className="relative aspect-square rounded-md overflow-hidden">
+                    <img src={p} className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => removePhoto(i)}
+                      className="absolute top-1 right-1 w-6 h-6 rounded-full bg-foreground/80 text-background flex items-center justify-center"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
-              <input
-                ref={bulkFileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-
-              <div
-                onClick={() => bulkFileInputRef.current?.click()}
-                className={cn(
-                  'border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all',
-                  photos.length === 0 ? 'border-border' : 'border-gold/30'
-                )}
+            <div className="flex gap-3 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  filesRef.current = [];
+                  setPhotos([]);
+                }}
               >
-                <div className="flex flex-col items-center gap-2">
-                  <Upload className="h-6 w-6 text-muted-foreground" />
-                  <p className="font-medium">Click to upload photos</p>
-                  <p className="text-sm text-muted-foreground">{photos.length} selected</p>
-                </div>
-              </div>
-
-              {photos.length > 0 && (
-                <div className="grid grid-cols-4 gap-3 mt-4">
-                  {photos.map((p, i) => (
-                    <div key={i} className="relative aspect-square rounded-md overflow-hidden">
-                      <img src={p} className="w-full h-full object-cover" />
-                      <button
-                        onClick={() => removePhoto(i)}
-                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-foreground/80 text-background flex items-center justify-center"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex gap-3 mt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    filesRef.current = [];
-                    setPhotos([]);
-                  }}
-                >
-                  Clear
-                </Button>
-                <Button variant="gold" onClick={handleUploadAll} disabled={isGenerating || filesRef.current.length === 0}>
-                  Upload & Apply
-                </Button>
-              </div>
+                Clear
+              </Button>
+              <Button variant="gold" onClick={handleUploadAll} disabled={isGenerating || filesRef.current.length === 0}>
+                Upload & Apply
+              </Button>
             </div>
           </div>
-        </Card>
+        </div>
+      </Card>
 
-      </TemplateAccessGuard>
+    
  
 
       {/* Hidden per-slot file input */}
