@@ -3,10 +3,10 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 
 export function TemplateAccessGuard({
-  template,
+  templatePay,
   children
 }: {
-  template: any
+  templatePay: any
   children: React.ReactNode
 }) {
   const [unlocked, setUnlocked] = useState(false)
@@ -14,37 +14,54 @@ export function TemplateAccessGuard({
 
   useEffect(() => {
     const checkAccess = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      const {
+        data: { user }
+      } = await supabase.auth.getUser()
 
-      if (!template.price || template.price === 0) {
+      if (!user) {
+        setUnlocked(false)
+        setLoading(false)
+        return
+      }
+
+      // Free template
+      if (!templatePay?.price || templatePay.price === 0) {
         setUnlocked(true)
         setLoading(false)
         return
       }
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('template_payments')
         .select('id')
         .eq('user_id', user.id)
-        .eq('template_id', template.id)
+        .eq('template_id', templatePay.id)
         .eq('status', 'success')
         .maybeSingle()
+
+      if (error) {
+        console.error(error)
+      }
 
       setUnlocked(!!data)
       setLoading(false)
     }
 
     checkAccess()
-  }, [template])
+  }, [templatePay?.id, templatePay?.price])
 
   const handlePay = async () => {
-    const { data } = await supabase.functions.invoke('init-paystack', {
+    const { data, error } = await supabase.functions.invoke('init-paystack', {
       body: {
-        templateId: template.id,
-        amount: template.price
+        templateId: templatePay.id,
+        amount: templatePay.price
       }
     })
+
+    if (error) {
+      console.error(error)
+      return
+    }
 
     window.location.href = data.data.authorization_url
   }
@@ -55,7 +72,7 @@ export function TemplateAccessGuard({
     return (
       <div className="border rounded-lg p-6 text-center space-y-4">
         <p className="font-medium">
-          This template costs ₦{template.price.toLocaleString()}
+          This template costs ₦{templatePay.price.toLocaleString()}
         </p>
         <Button onClick={handlePay}>
           Unlock Template

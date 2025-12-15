@@ -18,37 +18,38 @@ export function useTemplateAccess(templatePay: any) {
       }
 
       // Free template
-      if (!templatePay.price || templatePay.price === 0) {
+      if (!templatePay?.price || templatePay.price === 0) {
         setHasAccess(true)
         setLoading(false)
         return
       }
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('template_payments')
         .select('id')
         .eq('user_id', user.id)
-        .eq('template_id', template.id)
+        .eq('template_id', templatePay.id)
         .eq('status', 'success')
         .maybeSingle()
+
+      if (error) {
+        console.error(error)
+      }
 
       setHasAccess(!!data)
       setLoading(false)
     }
 
     checkAccess()
-  }, [template])
+  }, [templatePay?.id, templatePay?.price])
 
   const openPaywall = async () => {
-    const { data, error } = await supabase.functions.invoke(
-      'init-paystack',
-      {
-        body: {
-          templateId: template.id,
-          amount: template.price
-        }
+    const { data, error } = await supabase.functions.invoke('init-paystack', {
+      body: {
+        templateId: templatePay.id,
+        amount: templatePay.price
       }
-    )
+    })
 
     if (error) {
       console.error(error)
