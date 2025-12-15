@@ -221,30 +221,30 @@ export default function CreateMagazinePage() {
   };
 
   // Auto-assign uploaded images to template placeholders (sequential) BUT skip non-editable slots
-  const applyBulkImagesToPages = (uploadedUrls: string[]) => {
-    // flatten editable image slots across pages into a list of {pageNumber, slotId}
-    const slots: { pageNumber: number; slotId: string }[] = [];
-    templatePages.forEach((pg) => {
-      const layout = pg.layout_json ?? {};
-      (layout.imageBlocks ?? []).forEach((ib: ImageBlock) => {
-        if (ib.editable === false) return; // skip non-editable
-        slots.push({ pageNumber: pg.page_number, slotId: ib.id });
-      });
+  const applyNextImageToTemplate = (imageUrl: string) => {
+    setUserImages((prev) => {
+      const next = structuredClone(prev);
+
+      for (const pg of templatePages) {
+        const layout = pg.layout_json;
+        if (!layout?.imageBlocks) continue;
+
+        for (const ib of layout.imageBlocks) {
+          if (ib.editable === false) continue;
+
+          note: if (!next[pg.page_number]?.[ib.id]) {
+            next[pg.page_number] ??= {};
+            next[pg.page_number][ib.id] = imageUrl;
+            return next;
+          }
+        }
+      }
+
+      return next; // no empty slots left
+      
     });
-
-    // assign in order; if fewer images than slots, fill until images exhausted
-    const newUserImages = { ...userImages };
-    let imgIndex = 0;
-    for (let s = 0; s < slots.length && imgIndex < uploadedUrls.length; s++) {
-      const slot = slots[s];
-      newUserImages[slot.pageNumber] = newUserImages[slot.pageNumber] || {};
-      newUserImages[slot.pageNumber][slot.slotId] = uploadedUrls[imgIndex];
-      imgIndex++;
-    }
-
-    setUserImages(newUserImages);
-    toast.success('Images applied to template pages. You can adjust them individually.');
   };
+
 
   // Upload all bulk files to storage and apply to placeholders
   const handleUploadAll = async () => {
@@ -267,37 +267,52 @@ export default function CreateMagazinePage() {
         return;
       }
 
-      const uploadedUrls: string[] = [];
+      const toastId = toast.loading(
+        `Uploading images… 0 of ${filesRef.current.length}`,
+        { position: 'top-left' }
+      );
+
+      let uploadedCount = 0;
 
       for (let i = 0; i < filesRef.current.length; i++) {
         const file = filesRef.current[i];
+
         const filePath = `${user.id}/${Date.now()}_${file.name}`;
         const { data, error } = await supabase.storage
           .from('magazine-assets')
           .upload(filePath, file, { cacheControl: '3600', upsert: false });
 
         if (error) {
-          console.error('Upload error:', error);
-          toast.error('Failed to upload images');
-          setIsGenerating(false);
-          return;
+          console.error(error);
+          continue;
         }
 
-        // get public url
         const publicUrl =
-          supabase.storage.from('magazine-assets').getPublicUrl(data.path).data?.publicUrl ??
-          (data?.publicUrl ?? null);
+          supabase.storage
+            .from('magazine-assets')
+            .getPublicUrl(data.path).data.publicUrl;
 
-        uploadedUrls.push(publicUrl ?? '');
+        // ✅ APPLY IMMEDIATELY
+        applyNextImageToTemplate(publicUrl);
+
+        uploadedCount++;
+
+        // ✅ UPDATE TOAST
+        toast.loading(
+          `Uploading images… ${uploadedCount} of ${filesRef.current.length} uploaded`,
+          { id: toastId }
+        );
       }
 
-      // apply to pages (skips non-editable slots)
-      applyBulkImagesToPages(uploadedUrls);
+      toast.success(
+        `Images uploaded successfully (${uploadedCount}/${filesRef.current.length})`,
+        { id: toastId }
+      );
 
-      // clear local previews and filesRef (we keep photos UI for preview but clear filesRef to prevent reupload on save)
       filesRef.current = [];
-      setPhotos([]); // optional: remove previews
-      toast.success('All photos uploaded and applied.');
+      setPhotos([]);
+
+
     } catch (err) {
       console.error(err);
       toast.error('Something went wrong uploading images');
