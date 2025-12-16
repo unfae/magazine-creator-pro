@@ -77,6 +77,9 @@ export function useTemplateAccess(templatePay: any) {
 
     const { data, error } = await supabase.functions.invoke('init-paystack', {
       body: { templateId: templatePay.id, amount: templatePay.price },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
     });
 
     if (error) {

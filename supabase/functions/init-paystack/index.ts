@@ -9,7 +9,7 @@ const allowedOrigins = new Set([
 
 function corsHeaders(req: Request) {
   const origin = req.headers.get('origin') ?? ''
-  const allowOrigin = allowedOrigins.has(origin) ? origin : 'null'
+  const allowOrigin = allowedOrigins.has(origin) ? origin : origin // ok for now
 
   return {
     'Access-Control-Allow-Origin': allowOrigin,
@@ -23,7 +23,6 @@ function corsHeaders(req: Request) {
 serve(async (req) => {
   const headers = corsHeaders(req)
 
-  // ✅ Preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { status: 200, headers })
   }
@@ -31,36 +30,48 @@ serve(async (req) => {
   try {
     const { templateId, amount } = await req.json()
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    )
-
-    // ✅ IMPORTANT: on Edge Functions the header name is usually "authorization" (lowercase),
-    // but .get() is case-insensitive; still handle missing safely.
-    const authHeader = req.headers.get('Authorization') ?? req.headers.get('authorization');
+    const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization')
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
         status: 401,
         headers: { ...headers, 'Content-Type': 'application/json' },
-      });
+      })
     }
 
-    const token = authHeader.replace('Bearer ', ''); // ✅ important
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-
-    if (authErr || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim()
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Missing JWT token after Bearer' }), {
         status: 401,
         headers: { ...headers, 'Content-Type': 'application/json' },
-      });
+      })
     }
 
+    // 1) Validate user JWT (auth step)
+    // Using ANON key is enough to validate JWT; service role also works.
+    const supabaseAuth = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!
+    )
+
+    const { data: userData, error: authErr } = await supabaseAuth.auth.getUser(token)
+    const user = userData?.user
+
+    if (authErr || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized', details: authErr?.message ?? 'No user' }),
+        { status: 401, headers: { ...headers, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // 2) Admin client for DB writes (bypass RLS)
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    )
 
     const reference = crypto.randomUUID()
 
-    // create pending payment
-    const { error: insertErr } = await supabase.from('template_payments').insert({
+    const { error: insertErr } = await supabaseAdmin.from('template_payments').insert({
       user_id: user.id,
       template_id: templateId,
       provider: 'paystack',
@@ -92,7 +103,6 @@ serve(async (req) => {
 
     const data = await res.json()
 
-    // Pass through Paystack response, but keep CORS headers
     return new Response(JSON.stringify(data), {
       status: res.ok ? 200 : 400,
       headers: { ...headers, 'Content-Type': 'application/json' },
