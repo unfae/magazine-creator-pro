@@ -642,7 +642,7 @@ export default function CreateMagazinePage() {
         </div>
       </div>
 
-      {template?.price > 0 && !hasTemplateAccess && !accessLoading && (
+      {template?.price > 0 && !hasTemplateAccess && !loading && (
         <Card className="mb-6">
           <div className="p-6 flex items-center justify-between gap-4">
             <div>
