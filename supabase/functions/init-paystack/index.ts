@@ -38,22 +38,24 @@ serve(async (req) => {
 
     // ✅ IMPORTANT: on Edge Functions the header name is usually "authorization" (lowercase),
     // but .get() is case-insensitive; still handle missing safely.
-    const authHeader = req.headers.get('Authorization') ?? req.headers.get('authorization')
+    const authHeader = req.headers.get('Authorization') ?? req.headers.get('authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
         status: 401,
         headers: { ...headers, 'Content-Type': 'application/json' },
-      })
+      });
     }
 
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(authHeader)
+    const token = authHeader.replace('Bearer ', ''); // ✅ important
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
 
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...headers, 'Content-Type': 'application/json' },
-      })
+      });
     }
+
 
     const reference = crypto.randomUUID()
 
