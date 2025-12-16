@@ -61,15 +61,15 @@ type TemplatePage = {
 };
 
 export default function CreateMagazinePage() {
-   const { hasTemplateAccess, openPaywall } =
-    useTemplateAccess(templatePay)
+   
+  
   
   const { templateId } = useParams();
   const navigate = useNavigate();
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
   const perSlotFileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // kept names
+  // kept names..
   const [template, setTemplate] = useState<any | undefined>(() => undefined);
   const [title, setTitle] = useState('');
   const [photos, setPhotos] = useState<string[]>([]); // object URLs for previews (bulk)
@@ -80,6 +80,13 @@ export default function CreateMagazinePage() {
   // new states for template pages and per-page user content
   const [templatePages, setTemplatePages] = useState<TemplatePage[]>([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
+
+  const templatePay = template
+
+  const { hasTemplateAccess, loading, openPaywall } =
+    useTemplateAccess(templatePay)
+
+
 
   // userImages: map page_number -> (slotId -> url)
   const [userImages, setUserImages] = useState<Record<number, Record<string, string>>>({});
