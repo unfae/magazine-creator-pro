@@ -7,7 +7,7 @@ return (
 <div className="space-y-4 text-muted-foreground leading-relaxed">
 <p>
 We respect your privacy. Your personal data is only used to provide and improve the
-service.
+service. .
 </p>
 
 
