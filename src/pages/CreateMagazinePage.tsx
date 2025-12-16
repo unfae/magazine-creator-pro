@@ -702,7 +702,7 @@ export default function CreateMagazinePage() {
                       transformOrigin: 'top left',
                     }}
                   >
-                    {/* Render image placeholders */}
+                    {/* Render image placeholders.. */}
                     {(layout.imageBlocks ?? []).map((ib: ImageBlock) => {
                       const slotUrl = (userImages[pg.page_number] || {})[ib.id] || ib.defaultImageUrl || '';
                       
