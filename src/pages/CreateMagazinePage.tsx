@@ -81,10 +81,10 @@ export default function CreateMagazinePage() {
   const [templatePages, setTemplatePages] = useState<TemplatePage[]>([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
 
-  const templatePay = template
+  // const templatePay = template
 
-  const { hasTemplateAccess, loading, openPaywall } =
-    useTemplateAccess(templatePay)
+  // const { hasTemplateAccess, loading, openPaywall } =
+    // useTemplateAccess(templatePay)
 
 
 
@@ -122,7 +122,7 @@ export default function CreateMagazinePage() {
         return;
       }
 
-      // fetch template_pages ordered by page_number
+      // fetch template_pages ordered by page_number..
       const { data: pages, error: pErr } = await supabase
         .from('template_pages')
         .select('*')
@@ -201,10 +201,10 @@ export default function CreateMagazinePage() {
 
   // Bulk file select (unchanged UI)
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!hasTemplateAccess) {
-      openPaywall();
-      return;
-    }
+    //if (!hasTemplateAccess) {
+      //openPaywall();
+      //return;
+    //}
 
     const files = e.target.files;
     if (!files) return;
@@ -359,10 +359,10 @@ export default function CreateMagazinePage() {
       return;
     }
 
-    if (!hasTemplateAccess) {
-      openPaywall(); // from your guard
-      return;
-    }
+    //if (!hasTemplateAccess) {
+      //openPaywall(); // from your guard
+      //return;
+    //}
 
     currentSlotTargetRef.current = { pageNumber, slotId };
     if (perSlotFileInputRef.current) perSlotFileInputRef.current.click();
