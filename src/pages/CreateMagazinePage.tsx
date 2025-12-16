@@ -642,6 +642,23 @@ export default function CreateMagazinePage() {
         </div>
       </div>
 
+      {template?.price > 0 && !hasTemplateAccess && !accessLoading && (
+        <Card className="mb-6">
+          <div className="p-6 flex items-center justify-between gap-4">
+            <div>
+              <p className="font-medium">This template is paid.</p>
+              <p className="text-sm text-muted-foreground">
+                Cost: ₦{Number(template.price).toLocaleString()}
+              </p>
+            </div>
+            <Button variant="gold" onClick={openPaywall}>
+              Unlock Template
+            </Button>
+          </div>
+        </Card>
+      )}
+
+
       {/* Template Pages Carousel */}
       <div className="mb-6 relative">
         <div className="flex items-center justify-between mb-3">
