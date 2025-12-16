@@ -6,7 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 
 export function AppLayout() {
   useEffect(() => {
-    // Prevent duplicate script injection
+    // Prevent duplicate script injection...
     if ((window as any).clarity) return
 
     (function (c: any, l: Document, a: string, r: string, i: string) {
