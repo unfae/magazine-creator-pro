@@ -190,7 +190,7 @@ export default function CreateMagazinePage() {
     );
   }
 
-  // Build background url for a page using your naming scheme:
+  // Build background url for a page using your naming scheme::
   // template_pages/{Template_name}/{Page_index}.png
   const buildTemplatePageUrl = (templateSlug: string, pageIndex: number) => {
     const origin = `https://${(import.meta.env.VITE_SUPABASE_URL as string).replace(/^https?:\/\//, '')}`;
