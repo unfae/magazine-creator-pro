@@ -17,7 +17,7 @@ export function useTemplateAccess(templatePay: any) {
         return
       }
 
-      // Free template
+      // Free template...
       if (!templatePay?.price || templatePay.price === 0) {
         setHasAccess(true)
         setLoading(false)
