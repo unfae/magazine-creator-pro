@@ -618,7 +618,7 @@ export default function CreateMagazinePage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
-      {/* Back Button */}
+      {/* Back Button.. */}
       <button
         onClick={() => navigate('/templates')}
         className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
