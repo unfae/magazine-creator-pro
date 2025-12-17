@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Camera, Mail, User, Calendar } from 'lucide-react';
+import { Camera, LogOut, Mail, User, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 
@@ -16,9 +16,17 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/login';
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      window.location.href = '/login';
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to sign out');
+    }
   };
+
 
 
   useEffect(() => {
@@ -269,11 +277,13 @@ export default function ProfilePage() {
 
           <Button
             onClick={handleSignOut}
-            className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground w-full text-left rounded-md hover:bg-secondary/50"
+            variant="outline"
+            className="w-full justify-start gap-3"
           >
             <LogOut className="h-4 w-4" />
             Sign Out
           </Button>
+
 
           <Button variant="outline" className="w-full justify-start">
             Change Password
