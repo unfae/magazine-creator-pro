@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { FcGoogle } from 'react-icons/fc';
 
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(false);
+  const [isLogin, setIsLogin] = useState(false); // default = SIGN UP
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -20,8 +20,8 @@ export default function AuthPage() {
     password: '',
   });
 
-  // GOOGLE AUTH (works for both login + signup)
-  const signInWithGoogle = async (): Promise<void> => {
+  // GOOGLE AUTH (login + signup)
+  const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -29,9 +29,7 @@ export default function AuthPage() {
       },
     });
 
-    if (error) {
-      toast.error(error.message);
-    }
+    if (error) toast.error(error.message);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,33 +40,43 @@ export default function AuthPage() {
       let authResponse;
 
       if (isLogin) {
+        // LOGIN
         authResponse = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
         });
-      } else {
-        authResponse = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-        });
 
-        
+        if (authResponse.error) {
+          toast.error(authResponse.error.message);
+          return;
+        }
 
-        // NOTE:
-        // Do NOT insert profiles here for Google users.
-        // Use a DB trigger for that (recommended).
+        toast.success('Welcome back!');
+        navigate('/dashboard');
+        return;
       }
+
+      // SIGN UP
+      authResponse = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
 
       if (authResponse.error) {
         toast.error(authResponse.error.message);
         return;
       }
 
-      toast.success(isLogin ? 'Welcome back!' : 'Account created successfully!');
-      navigate('/dashboard');
+      // Email verification required
+      toast.success('Account created! Please check your email to verify.');
+      navigate('/check-email');
+
     } catch (err) {
       console.error(err);
-      toast.error('Something went wrong, please try again.');
+      toast.error('Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -76,7 +84,7 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* LEFT SIDE (unchanged) */}
+      {/* LEFT SIDE */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-foreground to-charcoal-light" />
         <div
@@ -116,7 +124,7 @@ export default function AuthPage() {
             </CardHeader>
 
             <CardContent className="space-y-6">
-              {/* GOOGLE BUTTON (works for login + signup) */}
+              {/* GOOGLE */}
               <Button
                 type="button"
                 variant="outline"
@@ -135,7 +143,7 @@ export default function AuthPage() {
                 <div className="h-px bg-border flex-1" />
               </div>
 
-              {/* EMAIL / PASSWORD FORM */}
+              {/* FORM */}
               <form onSubmit={handleSubmit} className="space-y-4">
                 {!isLogin && (
                   <div className="relative">
@@ -202,7 +210,7 @@ export default function AuthPage() {
                 </Button>
               </form>
 
-              {/* TOGGLE LOGIN / SIGNUP */}
+              {/* TOGGLE */}
               <p className="text-sm text-center text-muted-foreground">
                 {isLogin ? "Don't have an account?" : 'Already have an account?'}
                 <button
