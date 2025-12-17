@@ -81,7 +81,7 @@ export default function AuthPage() {
           className="absolute inset-0 opacity-20"
           style={{
             backgroundImage:
-              "url('https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=1200&h=1600&fit=crop')",
+              "url('https://rekjtkldpovvlkivdzqa.supabase.co/storage/v1/object/public/template_pages/signup_bg.jpg')",
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
