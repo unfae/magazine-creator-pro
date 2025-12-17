@@ -50,7 +50,7 @@ export function Header() {
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
-          <Link to="/create">
+          <Link to="/templates">
             <Button size="sm">
               Create Magazine
             </Button>
