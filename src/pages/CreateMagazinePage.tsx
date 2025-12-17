@@ -659,7 +659,7 @@ export default function CreateMagazinePage() {
       )}
 
 
-      {/* Template Pages Carousel */}
+      {/* Template Pages Carousel... */}
       <div className="mb-6 relative">
         <div className="flex items-center justify-between mb-3">
           <div className="text-sm text-muted-foreground">Preview pages (click to edit)</div>
