@@ -15,6 +15,12 @@ export default function ProfilePage() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  };
+
+
   useEffect(() => {
     let mounted = true;
 
@@ -260,6 +266,15 @@ export default function ProfilePage() {
           <CardDescription>Manage your account settings</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+
+          <Button
+            onClick={handleSignOut}
+            className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground w-full text-left rounded-md hover:bg-secondary/50"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </Button>
+
           <Button variant="outline" className="w-full justify-start">
             Change Password
           </Button>

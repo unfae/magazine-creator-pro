@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Menu, X, User, BookOpen, Settings, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
+
 
 const navItems = [
   { label: 'Templates', href: '/templates', icon: BookOpen },
@@ -14,6 +16,11 @@ const navItems = [
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  };
+
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -43,11 +50,13 @@ export function Header() {
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
-          <Button variant="ghost" size="sm">
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
-          </Button>
+          <Link to="/create">
+            <Button size="sm">
+              Create Magazine
+            </Button>
+          </Link>
         </div>
+
 
         {/* Mobile Menu Button */}
         <button
@@ -79,12 +88,17 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
-            <div className="border-t border-border mt-2 pt-2">
-              <button className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground w-full text-left rounded-md hover:bg-secondary/50">
+            <div className="hidden md:flex items-center gap-3">
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground w-full text-left rounded-md hover:bg-secondary/50"
+              >
                 <LogOut className="h-4 w-4" />
                 Sign Out
               </button>
+
             </div>
+
           </nav>
         </div>
       )}
