@@ -637,7 +637,7 @@ export default function CreateMagazinePage() {
 
         <div className= "mt-3">
           <p className="text-muted-foreground font-semibold">
-            {template.page_count} pages • {template.required_photos} photos required
+            {template.pageCount} pages • {template.requiredPhotos} photos required
           </p>
         </div>
       </div>
