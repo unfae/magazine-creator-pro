@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import { FcGoogle } from 'react-icons/fc';
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(false);
@@ -19,6 +20,20 @@ export default function AuthPage() {
     password: '',
   });
 
+  // GOOGLE AUTH (works for both login + signup)
+  const signInWithGoogle = async (): Promise<void> => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      toast.error(error.message);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -27,33 +42,19 @@ export default function AuthPage() {
       let authResponse;
 
       if (isLogin) {
-        // LOGIN FLOW
         authResponse = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
         });
       } else {
-        // SIGN UP FLOW
         authResponse = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
         });
 
-        // Insert profile row ONLY if user exists immediately (email confirm disabled)
-        const user = authResponse.data?.user;
-        if (user) {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert({
-              id: user.id,
-              full_name: formData.name,
-              email: user.email,
-            });
-
-          if (profileError) {
-            console.error('Profile insert error:', profileError);
-          }
-        }
+        // NOTE:
+        // Do NOT insert profiles here for Google users.
+        // Use a DB trigger for that (recommended).
       }
 
       if (authResponse.error) {
@@ -63,8 +64,7 @@ export default function AuthPage() {
 
       toast.success(isLogin ? 'Welcome back!' : 'Account created successfully!');
       navigate('/dashboard');
-
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       toast.error('Something went wrong, please try again.');
     } finally {
@@ -74,13 +74,14 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Left Side */}
+      {/* LEFT SIDE (unchanged) */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-foreground to-charcoal-light" />
-        <div 
+        <div
           className="absolute inset-0 opacity-20"
           style={{
-            backgroundImage: `url('https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=1200&h=1600&fit=crop')`,
+            backgroundImage:
+              "url('https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=1200&h=1600&fit=crop')",
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
@@ -92,33 +93,47 @@ export default function AuthPage() {
             from your photos
           </h1>
           <p className="text-lg opacity-80 max-w-md">
-            Transform your precious memories into beautifully designed magazine layouts with just a few clicks.
+            Transform your precious memories into beautifully designed magazine layouts.
           </p>
         </div>
       </div>
 
-      {/* Right Side */}
+      {/* RIGHT SIDE */}
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md animate-fade-in">
-          <div className="text-center mb-8 lg:hidden">
-            <h1 className="font-serif text-3xl font-semibold tracking-tight mb-2">
-              Magzine<span className="text-gold">Maker</span>
-            </h1>
-            <p className="text-muted-foreground">Create beautiful photo magazines</p>
-          </div>
-
           <Card className="border-0 shadow-elevated">
             <CardHeader className="text-center pb-4">
               <CardTitle className="text-editorial-md">
                 {isLogin ? 'Welcome Back' : 'Create Account'}
               </CardTitle>
               <CardDescription>
-                {isLogin 
-                  ? 'Sign in to continue creating magazines' 
+                {isLogin
+                  ? 'Sign in to continue creating magazines'
                   : 'Start your creative journey today'}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+
+            <CardContent className="space-y-6">
+              {/* GOOGLE BUTTON (works for login + signup) */}
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="w-full flex items-center gap-3 justify-center"
+                onClick={signInWithGoogle}
+              >
+                <FcGoogle size={20} />
+                Continue with Google
+              </Button>
+
+              {/* DIVIDER */}
+              <div className="flex items-center gap-4">
+                <div className="h-px bg-border flex-1" />
+                <span className="text-xs text-muted-foreground">OR</span>
+                <div className="h-px bg-border flex-1" />
+              </div>
+
+              {/* EMAIL / PASSWORD FORM */}
               <form onSubmit={handleSubmit} className="space-y-4">
                 {!isLogin && (
                   <div className="relative">
@@ -127,20 +142,24 @@ export default function AuthPage() {
                       type="text"
                       placeholder="Full Name"
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
                       className="pl-10"
-                      required={!isLogin}
+                      required
                     />
                   </div>
                 )}
-                
+
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="email"
                     placeholder="Email Address"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
                     className="pl-10"
                     required
                   />
@@ -152,63 +171,48 @@ export default function AuthPage() {
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Password"
                     value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
                     className="pl-10 pr-10"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
 
                 {isLogin && (
                   <div className="text-right">
-                    <Link to="/forgot-password" className="text-sm text-muted-foreground hover:text-foreground underline-animated">
+                    <Link to="/forgot-password" className="text-sm underline">
                       Forgot password?
                     </Link>
                   </div>
                 )}
 
-                <Button type="submit" variant="elegant" size="lg" className="w-full" disabled={isLoading}>
-                  {isLoading ? (
-                    <span className="flex items-center gap-2">
-                      <span className="h-4 w-4 border-2 border-background/30 border-t-background rounded-full animate-spin" />
-                      {isLogin ? 'Signing in...' : 'Creating account...'}
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      {isLogin ? 'Sign In' : 'Create Account'}
-                      <ArrowRight className="h-4 w-4" />
-                    </span>
-                  )}
+                <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
+                  {isLoading ? 'Please wait…' : isLogin ? 'Sign In' : 'Create Account'}
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </form>
 
-              <div className="mt-6 text-center">
-                <p className="text-sm text-muted-foreground">
-                  {isLogin ? "Don't have an account?" : 'Already have an account?'}
-                  <button
-                    type="button"
-                    onClick={() => setIsLogin(!isLogin)}
-                    className="ml-1 text-foreground font-medium hover:underline"
-                  >
-                    {isLogin ? 'Sign up' : 'Sign in'}
-                  </button>
-                </p>
-              </div>
+              {/* TOGGLE LOGIN / SIGNUP */}
+              <p className="text-sm text-center text-muted-foreground">
+                {isLogin ? "Don't have an account?" : 'Already have an account?'}
+                <button
+                  type="button"
+                  onClick={() => setIsLogin(!isLogin)}
+                  className="ml-1 font-medium hover:underline"
+                >
+                  {isLogin ? 'Sign up' : 'Sign in'}
+                </button>
+              </p>
             </CardContent>
           </Card>
-
-          <p className="text-center text-xs text-muted-foreground mt-6">
-            By continuing, you agree to our{' '}
-            <Link to="/terms" className="underline hover:text-foreground">Terms of Service</Link>
-            {' '}and{' '}
-            <Link to="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>
-          </p>
         </div>
       </div>
     </div>

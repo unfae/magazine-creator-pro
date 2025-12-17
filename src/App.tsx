@@ -16,6 +16,8 @@ import MagazinesPage from "@/pages/MagazinesPage";
 import ProfilePage from "@/pages/ProfilePage";
 import SettingsPage from "@/pages/SettingsPage";
 import NotFound from "@/pages/NotFound";
+import AuthCallback from "@/pages/AuthCallback";
+
 
 const queryClient = new QueryClient();
 
@@ -41,6 +43,7 @@ const App = () => (
             <Route path="/magazines" element={<MagazinesPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
