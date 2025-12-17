@@ -52,6 +52,8 @@ export default function AuthPage() {
           password: formData.password,
         });
 
+        
+
         // NOTE:
         // Do NOT insert profiles here for Google users.
         // Use a DB trigger for that (recommended).

@@ -17,6 +17,8 @@ import ProfilePage from "@/pages/ProfilePage";
 import SettingsPage from "@/pages/SettingsPage";
 import NotFound from "@/pages/NotFound";
 import AuthCallback from "@/pages/AuthCallback";
+import CheckEmailPage from "@/pages/CheckEmailPage";
+
 
 
 const queryClient = new QueryClient();
@@ -44,6 +46,7 @@ const App = () => (
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/check-email" element={<CheckEmailPage />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
