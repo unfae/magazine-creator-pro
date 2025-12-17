@@ -5,10 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Camera, LogOut, Mail, User, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import { useNavigate } from 'react-router-dom';
+
 
 export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
 
   const [profile, setProfile] = useState<any>(null);
   const [editedProfile, setEditedProfile] = useState<any>(null);
@@ -20,12 +24,13 @@ export default function ProfilePage() {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
 
-      window.location.href = '/login';
+      navigate('/auth', { replace: true });
     } catch (err) {
       console.error(err);
       toast.error('Failed to sign out');
     }
   };
+
 
 
 

@@ -5,7 +5,7 @@ import { ArrowRight, BookOpen, Sparkles, Image } from 'lucide-react';
 export default function Index() {
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section */}
+      {/* Hero Section... */}
       <section className="relative overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-5">
@@ -95,7 +95,7 @@ export default function Index() {
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-editorial-md mb-4">Ready to create your first magazine?</h2>
           <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-            Join thousands of creators making beautiful photo magazines
+            Join several others making beautiful photo magazines
           </p>
           <Link to="/auth">
             <Button variant="gold" size="xl">
@@ -106,17 +106,28 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border py-8">
-        <div className="container mx-auto px-4 text-center">
-          <p className="font-serif text-xl mb-2">
-            Magzine<span className="text-gold">Maker</span>
-          </p>
-          <p className="text-sm text-muted-foreground">
-            © 2024 MagzineMaker. All rights reserved.
-          </p>
+      {/* Featured Templates */}
+      <section>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-editorial-md mb-1">Featured Templates</h2>
+            <p className="text-muted-foreground">Professionally designed layouts</p>
+          </div>
+          <Link to="/templates">
+            <Button variant="ghost" size="sm">
+              See All Templates
+              <ArrowRight className="h-4 w-4 ml-1" />
+            </Button>
+          </Link>
         </div>
-      </footer>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
+          {featuredTemplates.map((template) => (
+            <TemplateCard key={template.id} template={template} />
+          ))}
+        </div>
+      </section>
+        
+
     </div>
   );
 }

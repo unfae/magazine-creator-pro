@@ -1,46 +1,65 @@
-import { Link, useLocation } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Menu, X, User, BookOpen, Settings, LogOut } from 'lucide-react';
-import { useState } from 'react';
-import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase';
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Menu, X, User, BookOpen, Settings, LogOut } from "lucide-react";
+import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
+const authNav = [
+  { label: "Templates", href: "/templates", icon: BookOpen },
+  { label: "My Magazines", href: "/magazines", icon: BookOpen },
+  { label: "Profile", href: "/profile", icon: User },
+  { label: "Settings", href: "/settings", icon: Settings },
+];
 
-const navItems = [
-  { label: 'Templates', href: '/templates', icon: BookOpen },
-  { label: 'My Magazines', href: '/magazines', icon: BookOpen },
-  { label: 'Profile', href: '/profile', icon: User },
-  { label: 'Settings', href: '/settings', icon: Settings },
+const publicNav = [
+  { label: "Templates", href: "/templates" },
+  { label: "Terms", href: "/terms" },
+  { label: "Privacy", href: "/privacy" },
 ];
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setIsAuthenticated(!!data.session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    window.location.href = '/login';
+    navigate("/auth");
   };
 
-
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link to="/dashboard" className="flex items-center gap-2">
-          <span className="font-serif text-2xl font-semibold tracking-tight">
-            Magzine<span className="text-gold">Maker</span>
-          </span>
+        <Link to={isAuthenticated ? "/dashboard" : "/"} className="font-serif text-2xl">
+          Magzine<span className="text-gold">Maker</span>
         </Link>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-1">
-          {navItems.map((item) => (
+        {/* Desktop Nav */}
+        <nav className="hidden md:flex items-center gap-2">
+          {(isAuthenticated ? authNav : publicNav).map((item) => (
             <Link
               key={item.href}
               to={item.href}
               className={cn(
-                "px-4 py-2 text-sm font-medium transition-colors rounded-md",
+                "px-4 py-2 text-sm rounded-md transition-colors",
                 location.pathname === item.href
-                  ? "text-foreground bg-secondary"
+                  ? "bg-secondary text-foreground"
                   : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
               )}
             >
@@ -49,56 +68,58 @@ export function Header() {
           ))}
         </nav>
 
+        {/* Actions */}
         <div className="hidden md:flex items-center gap-3">
-          <Link to="/templates">
-            <Button size="sm">
-              Create Magazine
-            </Button>
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <Link to="/templates">
+                <Button size="sm">Create Magazine</Button>
+              </Link>
+              <Button variant="ghost" size="sm" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link to="/auth">
+                <Button variant="ghost" size="sm">Sign In</Button>
+              </Link>
+              <Link to="/auth">
+                <Button size="sm">Get Started</Button>
+              </Link>
+            </>
+          )}
         </div>
 
-
-        {/* Mobile Menu Button */}
-        <button
-          className="md:hidden p-2"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          aria-label="Toggle menu"
-        >
-          {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        {/* Mobile Toggle */}
+        <button className="md:hidden p-2" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+          {isMenuOpen ? <X /> : <Menu />}
         </button>
       </div>
 
-      {/* Mobile Navigation */}
+      {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden border-t border-border bg-background animate-fade-in">
-          <nav className="container mx-auto px-4 py-4 flex flex-col gap-2">
-            {navItems.map((item) => (
+        <div className="md:hidden border-t bg-background">
+          <nav className="px-4 py-4 space-y-2">
+            {(isAuthenticated ? authNav : publicNav).map((item) => (
               <Link
                 key={item.href}
                 to={item.href}
                 onClick={() => setIsMenuOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors rounded-md",
-                  location.pathname === item.href
-                    ? "text-foreground bg-secondary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                )}
+                className="block px-4 py-2 rounded-md hover:bg-secondary"
               >
-                <item.icon className="h-4 w-4" />
                 {item.label}
               </Link>
             ))}
-            <div className="hidden md:flex items-center gap-3">
+            {isAuthenticated && (
               <button
                 onClick={handleSignOut}
-                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground w-full text-left rounded-md hover:bg-secondary/50"
+                className="w-full text-left px-4 py-2 rounded-md text-destructive hover:bg-secondary"
               >
-                <LogOut className="h-4 w-4" />
                 Sign Out
               </button>
-
-            </div>
-
+            )}
           </nav>
         </div>
       )}
