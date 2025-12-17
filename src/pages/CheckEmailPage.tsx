@@ -20,7 +20,7 @@ export default function CheckEmailPage() {
         </p>
 
         <p className="text-sm text-muted-foreground">
-          Didn’t get the email? Check spam or try signing up again.
+          Didn’t get the email? Check your spam folder or try signing up again Thank you.
         </p>
       </div>
     </div>
