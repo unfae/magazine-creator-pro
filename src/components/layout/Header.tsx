@@ -75,10 +75,7 @@ export function Header() {
               <Link to="/templates">
                 <Button size="sm">Create Magazine</Button>
               </Link>
-              <Button variant="ghost" size="sm" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
+              
             </>
           ) : (
             <>
