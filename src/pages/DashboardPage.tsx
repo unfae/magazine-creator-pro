@@ -14,7 +14,7 @@ export default function DashboardPage() {
   useEffect(() => {
     getFeaturedTemplates(3).then(setFeaturedTemplates);
   }, []);
-  
+
   const recentMagazines = sampleMagazines.slice(0, 2);
 
   return (
@@ -81,7 +81,7 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {/* Featured Templates */}
+      {/* Featured Templates.. */}
       <section>
         <div className="flex items-center justify-between mb-6">
           <div>
