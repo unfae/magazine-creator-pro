@@ -5,9 +5,16 @@ import { TemplateCard } from '@/components/templates/TemplateCard';
 import { MagazineCard } from '@/components/magazines/MagazineCard';
 import { templates, sampleMagazines } from '@/data/mockData';
 import { Plus, ArrowRight, Sparkles } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { getFeaturedTemplates } from '@/data/featured_templates';
 
 export default function DashboardPage() {
-  const featuredTemplates = templates.slice(0, 3);
+  const [featuredTemplates, setFeaturedTemplates] = useState([]);
+
+  useEffect(() => {
+    getFeaturedTemplates(3).then(setFeaturedTemplates);
+  }, []);
+  
   const recentMagazines = sampleMagazines.slice(0, 2);
 
   return (

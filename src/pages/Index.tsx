@@ -2,10 +2,18 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, BookOpen, Sparkles, Image } from 'lucide-react';
 import { TemplateCard } from '@/components/templates/TemplateCard';
-import { templates } from '@/data/mockData';
+import { getFeaturedTemplates } from '@/data/featured_templates';
+import { useEffect, useState } from 'react';
+
+
 
 export default function Index() {
-  const featuredTemplates = templates.slice(0, 3);
+  const [featuredTemplates, setFeaturedTemplates] = useState([]);
+
+  useEffect(() => {
+    getFeaturedTemplates(3).then(setFeaturedTemplates);
+  }, []);
+
 
   return (
     <div className="min-h-screen bg-background">
