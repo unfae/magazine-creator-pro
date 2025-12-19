@@ -30,11 +30,12 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* GLOBAL LAYOUT */}
           <Route element={<AppLayout />}>
             {/* Public */}
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/check-email" element={<CheckEmailPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/templates" element={<TemplatesPage />} />
@@ -45,12 +46,11 @@ const App = () => (
             <Route path="/magazines" element={<MagazinesPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route path="/check-email" element={<CheckEmailPage />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
         </Routes>
+
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
