@@ -3,11 +3,31 @@ import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { ThemeProvider } from "@/components/theme-provider";
 import { useAuth } from "@/context/AuthContext";
+import { useEffect } from "react";
 
 export function AppLayout() {
   const { loading } = useAuth();
 
-  if (loading) return null; // prevents layout flicker
+  // Prevent layout flicker while auth resolves
+  if (loading) return null;
+
+  // Microsoft Clarity (runs once)
+  useEffect(() => {
+    if ((window as any).clarity) return;
+
+    (function (c: any, l: Document, a: string, r: string, i: string) {
+      c[a] =
+        c[a] ||
+        function () {
+          (c[a].q = c[a].q || []).push(arguments);
+        };
+      const t = l.createElement(r);
+      t.async = true;
+      t.src = "https://www.clarity.ms/tag/" + i;
+      const y = l.getElementsByTagName(r)[0];
+      y.parentNode?.insertBefore(t, y);
+    })(window, document, "clarity", "script", "umjy45xnr8");
+  }, []);
 
   return (
     <ThemeProvider defaultTheme="light" storageKey="magazine-theme">
