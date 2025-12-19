@@ -45,7 +45,7 @@ export default function CheckEmailPage() {
         <div className="space-y-3">
           <Input
             type="email"
-            placeholder="Enter your email again"
+            placeholder="If you didn't get the email, Enter your email again"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
