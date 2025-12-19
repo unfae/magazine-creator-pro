@@ -616,6 +616,67 @@ export default function CreateMagazinePage() {
     }
   };
 
+  const handleExportVideo = async () => {
+    if (templatePages.length === 0) {
+      toast.error('No pages to export')
+      return
+    }
+
+    setIsGenerating(true)
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        toast.error('Sign in required')
+        return
+      }
+
+      const pageUrls = templatePages.map(
+        (pg) =>
+          document
+            .getElementById(`page-${pg.page_number}`)
+            ?.querySelector('img')?.src ||
+          buildTemplatePageUrl(template.slug, pg.page_number)
+      )
+
+      const res = await fetch('/api/export-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pages: pageUrls,
+          userName:
+            user.user_metadata?.full_name ||
+            user.email?.split('@')[0] ||
+            'user',
+          templateName: template.name,
+          userId: user.id,
+          templateId: template.id,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) throw new Error(data.error)
+
+      // trigger download
+      const a = document.createElement('a')
+      a.href = data.url
+      a.download = ''
+      a.click()
+
+      toast.success('Video exported successfully')
+    } catch (err) {
+      console.error(err)
+      toast.error('Failed to export video')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       {/* Back Button.. */}
@@ -919,25 +980,37 @@ export default function CreateMagazinePage() {
 
       {/* Save / Generate */}
       <div className="flex justify-end gap-4">
-        <Button variant="outline" size="lg" onClick={handleGenerate} disabled={isGenerating || !title.trim()}>
-          {isGenerating ? (
-            <span className="flex items-center gap-2">
-              <span className="h-4 w-4 border-2 border-background/30 border-t-background rounded-full animate-spin" />
-              Saving...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Save Draft
-            </span>
-          )}
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={handleGenerate}
+          disabled={isGenerating || !title.trim()}
+        >
+          <Sparkles className="h-4 w-4 mr-2" />
+          Save Draft
         </Button>
 
-        <Button variant="gold" size="lg" onClick={handleExportPDF} disabled={isGenerating || templatePages.length === 0}>
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={handleExportVideo}
+          disabled={isGenerating || templatePages.length === 0}
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Video
+        </Button>
+
+        <Button
+          variant="gold"
+          size="lg"
+          onClick={handleExportPDF}
+          disabled={isGenerating || templatePages.length === 0}
+        >
           <Download className="h-4 w-4 mr-2" />
           Export PDF
         </Button>
       </div>
+
     </div>
   );
 }
