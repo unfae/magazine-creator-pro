@@ -1,15 +1,22 @@
+// AuthPage.tsx
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { FcGoogle } from 'react-icons/fc';
 
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(false); // default = SIGN UP
+  const [isLogin, setIsLogin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -20,7 +27,6 @@ export default function AuthPage() {
     password: '',
   });
 
-  // GOOGLE AUTH (login + signup)
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -37,46 +43,37 @@ export default function AuthPage() {
     setIsLoading(true);
 
     try {
-      let authResponse;
-
       if (isLogin) {
-        // LOGIN
-        authResponse = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
         });
 
-        if (authResponse.error) {
-          toast.error(authResponse.error.message);
+        if (error) throw error;
+        if (!data.session) {
+          toast.error('Please verify your email before signing in.');
+          navigate('/check-email');
           return;
         }
 
         toast.success('Welcome back!');
         navigate('/dashboard');
-        return;
+      } else {
+        const { error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
+        });
+
+        if (error) throw error;
+
+        toast.success('Check your email to verify your account');
+        navigate('/check-email');
       }
-
-      // SIGN UP
-      authResponse = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-
-      if (authResponse.error) {
-        toast.error(authResponse.error.message);
-        return;
-      }
-
-      // Email verification required
-      toast.success('Account created! Please check your email to verify.');
-      navigate('/check-email');
-
-    } catch (err) {
-      console.error(err);
-      toast.error('Something went wrong. Please try again.');
+    } catch (err: any) {
+      toast.error(err.message || 'Authentication failed');
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +81,7 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* LEFT SIDE */}
+      {/* LEFT */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-foreground to-charcoal-light" />
         <div
@@ -92,91 +89,50 @@ export default function AuthPage() {
           style={{
             backgroundImage:
               "url('https://rekjtkldpovvlkivdzqa.supabase.co/storage/v1/object/public/template_pages/signup_bg.jpg')",
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
           }}
         />
-        <div className="relative z-10 flex flex-col justify-center px-12 text-primary-foreground">
-          <h1 className="text-editorial-lg mb-6">
-            Create stunning<br />
-            <span className="italic">magazines</span><br />
-            from your photos
-          </h1>
-          <p className="text-lg opacity-80 max-w-md">
-            Transform your precious memories into beautifully designed magazine layouts.
-          </p>
-        </div>
       </div>
 
-      {/* RIGHT SIDE */}
+      {/* RIGHT */}
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
-        <div className="w-full max-w-md animate-fade-in">
-          <Card className="border-0 shadow-elevated">
-            <CardHeader className="text-center pb-4">
-              <CardTitle className="text-editorial-md">
-                {isLogin ? 'Welcome Back' : 'Create Account'}
-              </CardTitle>
+        <div className="w-full max-w-md">
+          <Card>
+            <CardHeader className="text-center">
+              <CardTitle>{isLogin ? 'Welcome Back' : 'Create Account'}</CardTitle>
               <CardDescription>
                 {isLogin
-                  ? 'Sign in to continue creating magazines'
-                  : 'Start your creative journey today'}
+                  ? 'Sign in to continue'
+                  : 'Start your creative journey'}
               </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-6">
-              {/* GOOGLE */}
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                className="w-full flex items-center gap-3 justify-center"
-                onClick={signInWithGoogle}
-              >
-                <FcGoogle size={20} />
-                Continue with Google
+              <Button variant="outline" className="w-full" onClick={signInWithGoogle}>
+                <FcGoogle size={20} /> Continue with Google
               </Button>
 
-              {/* DIVIDER */}
-              <div className="flex items-center gap-4">
-                <div className="h-px bg-border flex-1" />
-                <span className="text-xs text-muted-foreground">OR</span>
-                <div className="h-px bg-border flex-1" />
-              </div>
-
-              {/* FORM */}
               <form onSubmit={handleSubmit} className="space-y-4">
                 {!isLogin && (
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="text"
-                      placeholder="Full Name"
-                      value={formData.name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, name: e.target.value })
-                      }
-                      className="pl-10"
-                      required
-                    />
-                  </div>
+                  <Input
+                    placeholder="Full Name"
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                  />
                 )}
 
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="email"
-                    placeholder="Email Address"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    className="pl-10"
-                    required
-                  />
-                </div>
+                <Input
+                  type="email"
+                  placeholder="Email"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  required
+                />
 
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Password"
@@ -184,40 +140,26 @@ export default function AuthPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, password: e.target.value })
                     }
-                    className="pl-10 pr-10"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    className="absolute right-3 top-2"
                   >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {showPassword ? <EyeOff /> : <Eye />}
                   </button>
                 </div>
 
-                {isLogin && (
-                  <div className="text-right">
-                    <Link to="/forgot-password" className="text-sm underline">
-                      Forgot password?
-                    </Link>
-                  </div>
-                )}
-
-                <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Please wait…' : isLogin ? 'Sign In' : 'Create Account'}
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLogin ? 'Sign In' : 'Create Account'}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </form>
 
-              {/* TOGGLE */}
-              <p className="text-sm text-center text-muted-foreground">
-                {isLogin ? "Don't have an account?" : 'Already have an account?'}
-                <button
-                  type="button"
-                  onClick={() => setIsLogin(!isLogin)}
-                  className="ml-1 font-medium hover:underline"
-                >
+              <p className="text-center text-sm">
+                {isLogin ? "Don't have an account?" : 'Already have one?'}{' '}
+                <button onClick={() => setIsLogin(!isLogin)} className="underline">
                   {isLogin ? 'Sign up' : 'Sign in'}
                 </button>
               </p>

@@ -1,12 +1,19 @@
-import { useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
 
-const AuthCallback = (): JSX.Element => {
+export default function AuthCallback() {
+  const navigate = useNavigate();
+
   useEffect(() => {
-    supabase.auth.getSession();
-  }, []);
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        navigate('/dashboard', { replace: true });
+      } else {
+        navigate('/auth', { replace: true });
+      }
+    });
+  }, [navigate]);
 
-  return <p style={{ padding: 24 }}>Signing you in…</p>;
-};
-
-export default AuthCallback;
+  return <p className="p-8 text-center">Signing you in…</p>;
+}
