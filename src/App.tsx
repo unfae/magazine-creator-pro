@@ -18,6 +18,8 @@ import SettingsPage from "@/pages/SettingsPage";
 import NotFound from "@/pages/NotFound";
 import AuthCallback from "@/pages/AuthCallback";
 import CheckEmailPage from "@/pages/CheckEmailPage";
+import { AuthProvider } from '@/context/AuthContext';
+
 
 
 
@@ -29,27 +31,29 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route element={<AppLayout />}>
-            {/* Public */}
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route path="/check-email" element={<CheckEmailPage />} />
-            <Route path="/terms" element={<TermsPage />} />
-            <Route path="/privacy" element={<PrivacyPage />} />
-            <Route path="/templates" element={<TemplatesPage />} />
+        <AuthProvider>
+          <Routes>
+            <Route element={<AppLayout />}>
+              {/* Public */}
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<AuthPage />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/check-email" element={<CheckEmailPage />} />
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/templates" element={<TemplatesPage />} />
 
-            {/* Authenticated */}
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/create/:templateId" element={<CreateMagazinePage />} />
-            <Route path="/magazines" element={<MagazinesPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-          </Route>
+              {/* Authenticated */}
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/create/:templateId" element={<CreateMagazinePage />} />
+              <Route path="/magazines" element={<MagazinesPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Route>
 
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
 
       </BrowserRouter>
     </TooltipProvider>
