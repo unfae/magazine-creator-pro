@@ -5,13 +5,12 @@ import { TemplateCard } from '@/components/templates/TemplateCard';
 import { getFeaturedTemplates } from '@/data/featured_templates';
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
-
+import { useAuth } from '@/context/AuthContext'
 
 
 
 export default function Index() {
-
+  
   const { user, loading } = useAuth()
 
   if (loading) return null
@@ -19,7 +18,6 @@ export default function Index() {
   if (user) {
     return <Navigate to="/dashboard" replace />
   }
-
 
   const [featuredTemplates, setFeaturedTemplates] = useState([]);
 
