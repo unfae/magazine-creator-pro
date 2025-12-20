@@ -969,7 +969,7 @@ export default function CreateMagazinePage() {
     
  
 
-      {/* Hidden per-slot file input */}
+      {/* Hidden per-slot file input... */}
       <input
         ref={(el) => (perSlotFileInputRef.current = el)}
         type="file"

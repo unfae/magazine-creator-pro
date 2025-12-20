@@ -28,7 +28,7 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section */}
+      {/* Hero Section... */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 opacity-5">
           <div
