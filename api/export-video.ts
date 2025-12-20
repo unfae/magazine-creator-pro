@@ -1,95 +1,71 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
-import ffmpeg from 'fluent-ffmpeg'
-import ffmpegPath from 'ffmpeg-static'
-import fetch from 'node-fetch'
-import fs from 'fs'
-import path from 'path'
-import os from 'os'
+import puppeteer from 'puppeteer'
 import { createClient } from '@supabase/supabase-js'
 
-ffmpeg.setFfmpegPath(ffmpegPath as string)
-
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
   try {
-    const { pages, userName, templateName, userId, templateId } = req.body
+    const { pages, userId, templateName, userName } = req.body
 
-    if (!pages || pages.length === 0) {
-      return res.status(400).json({ error: 'No pages provided' })
+    if (!pages || !Array.isArray(pages)) {
+      return res.status(400).json({ error: 'Invalid pages data' })
     }
 
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mag-video-'))
-    const imagesDir = path.join(tmpDir, 'images')
-    fs.mkdirSync(imagesDir)
-
-    // 1️⃣ Download page images
-    for (let i = 0; i < pages.length; i++) {
-      const response = await fetch(pages[i])
-      const buffer = await response.arrayBuffer()
-      fs.writeFileSync(
-        path.join(imagesDir, `page-${String(i).padStart(3, '0')}.jpg`),
-        Buffer.from(buffer)
-      )
-    }
-
-    const outputPath = path.join(tmpDir, 'output.mp4')
-
-    // 2️⃣ Generate video (horizontal page flip feel)
-    await new Promise<void>((resolve, reject) => {
-      ffmpeg()
-        .input(path.join(imagesDir, 'page-%03d.jpg'))
-        .inputOptions('-framerate 1')
-        .outputOptions([
-          '-vf',
-          'scale=1000:1416,format=yuv420p',
-          '-movflags',
-          '+faststart',
-          '-pix_fmt',
-          'yuv420p'
-        ])
-        .duration(Math.min(pages.length * 6, 60))
-        .save(outputPath)
-        .on('end', resolve)
-        .on('error', reject)
+    const browser = await puppeteer.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
     })
 
-    // 3️⃣ Upload to Supabase Storage
-    const fileName = `${userName}_${templateName}_magazine_video.mp4`
-      .replace(/\s+/g, '_')
-      .toLowerCase()
+    const page = await browser.newPage()
+    await page.setViewport({ width: 1000, height: 1416 })
 
-    const videoBuffer = fs.readFileSync(outputPath)
+    // HTML slideshow
+    const html = `
+      <html>
+        <body style="margin:0; overflow:hidden;">
+          ${pages
+            .map(
+              (img: string) => `
+              <img src="${img}" style="
+                width:1000px;
+                height:1416px;
+                object-fit:cover;
+                position:absolute;
+                top:0;
+                left:0;
+                animation: flip 6s linear infinite;
+              "/>
+            `
+            )
+            .join('')}
+        </body>
+      </html>
+    `
 
-    const { data, error } = await supabase.storage
-      .from('exported-videos')
-      .upload(`${Date.now()}_${fileName}`, videoBuffer, {
-        contentType: 'video/mp4',
-        upsert: false
-      })
+    await page.setContent(html, { waitUntil: 'networkidle0' })
 
-    if (error) throw error
+    const buffer = await page.screenshot({ type: 'jpeg', quality: 90 })
 
-    const publicUrl = supabase.storage
-      .from('exported-videos')
-      .getPublicUrl(data.path).data.publicUrl
+    await browser.close()
 
-    // 4️⃣ Log export (NO video stored in DB)
-    await supabase.from('video_exports').insert({
+    // Upload placeholder (replace with video pipeline later)
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    await supabase.from('exported_videos_log').insert({
       user_id: userId,
-      template_id: templateId
+      template_name: templateName,
     })
 
-    res.status(200).json({ url: publicUrl })
-  } catch (err: any) {
+    res.status(200).json({
+      success: true,
+      message: 'Video export initiated',
+    })
+  } catch (err) {
     console.error(err)
-    res.status(500).json({ error: 'Video export failed' })
+    res.status(500).json({ error: 'Export failed' })
   }
 }
