@@ -4,10 +4,21 @@ import { ArrowRight, BookOpen, Sparkles, Image } from 'lucide-react';
 import { TemplateCard } from '@/components/templates/TemplateCard';
 import { getFeaturedTemplates } from '@/data/featured_templates';
 import { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom'
+import { useAuth } from '@/context/AuthContext'
 
 
 
 export default function Index() {
+  
+  const { user, loading } = useAuth()
+
+  if (loading) return null
+
+  if (user) {
+    return <Navigate to="/dashboard" replace />
+  }
+
   const [featuredTemplates, setFeaturedTemplates] = useState([]);
 
   useEffect(() => {
