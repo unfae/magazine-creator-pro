@@ -29,12 +29,31 @@ export function usePageImageDownload() {
         const el = document.getElementById(`page-${pageNumber}`);
         if (!el) continue;
 
-        const canvas = await html2canvas(el, {
-          scale: 2,
-          useCORS: true,
+       // 1) High‑resolution render
+        const scale = 3; // or 4 if you want even sharper (watch file size)
+        const baseCanvas = await html2canvas(el, {
+        scale,
+        useCORS: true,
+        // optional: explicitly set width/height if needed
+        // width: el.clientWidth,
+        // height: el.clientHeight,
         });
 
+        // 2) Normalize to exact aspect ratio using a second canvas
+        const targetWidth = baseCanvas.width;  // keeps aspect ratio from DOM
+        const targetHeight = baseCanvas.height;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+        ctx.drawImage(baseCanvas, 0, 0, targetWidth, targetHeight);
+        }
+
         const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+
 
         const a = document.createElement('a');
         a.href = dataUrl;
