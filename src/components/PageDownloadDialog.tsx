@@ -19,7 +19,7 @@ type PageDownloadDialogProps = {
 
 export function PageDownloadDialog({
   pageNumbers,
-  triggerLabel = 'Download pages as images',
+  triggerLabel = 'Download as Images',
 }: PageDownloadDialogProps) {
   const {
     selectedPages,
