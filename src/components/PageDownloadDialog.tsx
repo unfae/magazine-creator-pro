@@ -27,22 +27,32 @@ export function PageDownloadDialog({
     togglePage,
     clearSelection,
     downloadSelected,
+    setSelectedPages,
   } = usePageImageDownload();
 
   const [open, setOpen] = React.useState(false);
 
-  const handleConfirm = async () => {
-    await downloadSelected();
-    // optional: keep dialog open; or close after download
-    // setOpen(false);
+  if (pageNumbers.length === 0) return null;
+
+  const handleSelectAll = () => {
+    setSelectedPages(pageNumbers);
   };
 
-  if (pageNumbers.length === 0) return null;
+  const handleDownloadAll = async () => {
+    setSelectedPages(pageNumbers);
+    await downloadSelected();
+  };
+
+  const handleConfirm = async () => {
+    await downloadSelected();
+  };
+
+  const selectedCount = selectedPages.length;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="lg">
           {triggerLabel}
         </Button>
       </DialogTrigger>
@@ -51,25 +61,39 @@ export function PageDownloadDialog({
         <DialogHeader>
           <DialogTitle>Select pages to download</DialogTitle>
           <DialogDescription>
-            Choose which pages you want to save as images. Each selected page
+            Choose which pages you want to save as high-quality images. Each selected page
             will be downloaded as a separate JPG file.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 mt-2">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">
-              Tap pages to select or deselect.
-            </p>
-            {selectedPages.length > 0 && (
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col">
+              <p className="text-xs text-muted-foreground">
+                Tap pages to select or deselect.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Currently selected: {selectedCount} / {pageNumbers.length}
+              </p>
+            </div>
+            <div className="flex items-center gap-3 text-xs">
               <button
                 type="button"
-                onClick={clearSelection}
-                className="text-xs underline"
+                onClick={handleSelectAll}
+                className="underline"
               >
-                Clear
+                Select all
               </button>
-            )}
+              {selectedCount > 0 && (
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  className="underline"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2 max-h-52 overflow-auto">
@@ -104,18 +128,30 @@ export function PageDownloadDialog({
             Close
           </Button>
 
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleConfirm}
-            disabled={downloading || selectedPages.length === 0}
-          >
-            {downloading
-              ? 'Downloading…'
-              : selectedPages.length === 0
-              ? 'Select pages'
-              : `Download ${selectedPages.length} page(s)`}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadAll}
+              disabled={downloading || pageNumbers.length === 0}
+            >
+              {downloading ? 'Downloading…' : 'Download all pages'}
+            </Button>
+
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleConfirm}
+              disabled={downloading || selectedCount === 0}
+            >
+              {downloading
+                ? 'Downloading…'
+                : selectedCount === 0
+                ? 'Download selected'
+                : `Download ${selectedCount} page(s)`}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

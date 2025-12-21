@@ -983,25 +983,7 @@ export default function CreateMagazinePage() {
 
       {/* Save / Generate */}
       <div className="flex justify-end gap-4">
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={handleGenerate}
-          disabled={isGenerating || !title.trim()}
-        >
-          <Sparkles className="h-4 w-4 mr-2" />
-          Save Draft
-        </Button>
-
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={handleExportVideo}
-          disabled={isGenerating || templatePages.length === 0}
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Video
-        </Button>
+        
           
         <PageDownloadDialog pageNumbers={pageNumbers} />
 
