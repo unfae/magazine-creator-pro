@@ -36,7 +36,7 @@ export default function DashboardPage() {
               </p>
               <Link to="/templates">
                 <Button variant="elegant" size="lg">
-                  Browse Templates
+                  Create Magazine
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </Link>
@@ -49,37 +49,8 @@ export default function DashboardPage() {
         </Card>
       </section>
 
-      {/* Recent Magazines */}
-      {recentMagazines.length > 0 && (
-        <section className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-editorial-md mb-1">Your Magazines</h2>
-              <p className="text-muted-foreground">Continue where you left off</p>
-            </div>
-            <Link to="/magazines">
-              <Button variant="ghost" size="sm">
-                View All
-                <ArrowRight className="h-4 w-4 ml-1" />
-              </Button>
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 stagger-children">
-            {/* Create New Card */}
-            <Link to="/templates">
-              <Card className="aspect-[4/5] flex flex-col items-center justify-center gap-4 hover:shadow-elevated cursor-pointer border-dashed border-2 bg-secondary/30 hover:bg-secondary/50 transition-all">
-                <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center">
-                  <Plus className="h-7 w-7 text-muted-foreground" />
-                </div>
-                <span className="text-sm font-medium text-muted-foreground">Create New Magazine</span>
-              </Card>
-            </Link>
-            {recentMagazines.map((magazine) => (
-              <MagazineCard key={magazine.id} magazine={magazine} />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Recent Magazines.. I deleted it */}
+      
 
       {/* Featured Templates.. */}
       <section>

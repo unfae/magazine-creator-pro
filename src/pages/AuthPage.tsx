@@ -1,6 +1,6 @@
 // AuthPage.tsx
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -20,12 +20,22 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
   });
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const mode = params.get('mode');
+    if (mode === 'login') setIsLogin(true);
+    if (mode === 'signup') setIsLogin(false);
+  }, [location.search]);
+
 
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({

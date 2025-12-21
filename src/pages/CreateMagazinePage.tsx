@@ -982,14 +982,14 @@ export default function CreateMagazinePage() {
       />
 
       {/* Save / Generate */}
-      <div className="flex justify-end gap-4">
+      <div className="flex flex-wrap justify-end gap-3 mt-4">
         
           
         <PageDownloadDialog pageNumbers={pageNumbers} />
 
         <Button
-          variant="gold"
-          size="lg"
+          variant="outline"
+          size="sm"
           onClick={handleExportPDF}
           disabled={isGenerating || templatePages.length === 0}
         >

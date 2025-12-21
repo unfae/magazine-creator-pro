@@ -52,7 +52,7 @@ export function PageDownloadDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="lg">
+        <Button variant="gold" size="sm" className="whitespace-nowrap" >
           {triggerLabel}
         </Button>
       </DialogTrigger>
@@ -118,7 +118,7 @@ export function PageDownloadDialog({
           </div>
         </div>
 
-        <DialogFooter className="mt-4 flex flex-row justify-between gap-2">
+        <DialogFooter className="mt-4 flex flex-row justify-between gap-2 flex-wrap">
           <Button
             type="button"
             variant="ghost"
@@ -128,7 +128,7 @@ export function PageDownloadDialog({
             Close
           </Button>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               type="button"
               variant="outline"
