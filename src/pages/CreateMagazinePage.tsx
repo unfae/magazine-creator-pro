@@ -284,7 +284,7 @@ export default function CreateMagazinePage() {
       if (userError || !user) {
         toast.error('You must be signed in to upload images');
         setIsGenerating(false);
-        navigate('/auth');
+        navigate('/auth?mode=login');
         return;
       }
 
@@ -454,7 +454,7 @@ export default function CreateMagazinePage() {
       if (userError || !user) {
         toast.error('You must be signed in to generate a magazine');
         setIsGenerating(false);
-        navigate('/auth');
+        navigate('/auth?mode=login');
         return;
       }
 

@@ -57,14 +57,14 @@ export default function Index() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/auth">
-                <Button variant="elegant" size="xl">
+              <Link to="/auth?mode=signup">
+                <Button variant="elegant" size="lg">
                   Get Started Free
                   <ArrowRight className="h-5 w-5 ml-2" />
                 </Button>
               </Link>
-              <Link to="/auth">
-                <Button variant="outline" size="xl">
+              <Link to="/auth?mode=login">
+                <Button variant="outline" size="lg">
                   Sign In
                 </Button>
               </Link>

@@ -64,12 +64,12 @@ export function Header() {
             </Link>
           ) : (
             <>
-              <Link to="/auth">
+              <Link to="/auth?mode=login">
                 <Button variant="ghost" size="sm">
                   Sign In
                 </Button>
               </Link>
-              <Link to="/auth">
+              <Link to="/auth?mode=signup">
                 <Button size="sm">Get Started</Button>
               </Link>
             </>
