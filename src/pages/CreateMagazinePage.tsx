@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import { useTemplateAccess } from '@/hooks/useTemplateAccess'
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import { PageDownloadDialog } from '@/components/PageDownloadDialog';
+
 
 type TextBlock = {
   id: string;
@@ -62,8 +64,7 @@ type TemplatePage = {
 
 export default function CreateMagazinePage() {
    
-  
-  
+
   const { templateId } = useParams();
   const navigate = useNavigate();
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
@@ -80,6 +81,8 @@ export default function CreateMagazinePage() {
   // new states for template pages and per-page user content
   const [templatePages, setTemplatePages] = useState<TemplatePage[]>([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const pageNumbers = templatePages.map((pg) => pg.page_number);
+
 
   const templatePay = template
 
@@ -999,6 +1002,8 @@ export default function CreateMagazinePage() {
           <Download className="h-4 w-4 mr-2" />
           Video
         </Button>
+          
+        <PageDownloadDialog pageNumbers={pageNumbers} />
 
         <Button
           variant="gold"
