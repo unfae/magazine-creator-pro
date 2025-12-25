@@ -795,6 +795,9 @@ export default function CreateMagazinePage() {
                             borderRadius: ib.borderRadius ? `${ib.borderRadius}px` : undefined,
                             transform: `rotate(${ib.rotate ?? 0}deg)`,
                             border: bw && bc ? `${bw}px ${bs} ${bc}` : undefined,
+                            // ✅ hard-enforce click-through for locked/uneditable slots
+                            pointerEvents: isEditable ? 'auto' : 'none',
+
                           }}
                           onClick={() => {
                             if (!isEditable) return;
@@ -813,15 +816,22 @@ export default function CreateMagazinePage() {
                                 objectFit: 'cover',
                                 objectPosition: 'center',
                                 borderRadius: ib.borderRadius ? `${ib.borderRadius}px` : undefined,
+                                // ✅ also ensure the image itself can’t intercept clicks
+                                pointerEvents: isEditable ? 'auto' : 'none',
                               }}
                             />
                           ) : (
-                            <div className="text-xs text-muted-foreground text-center p-2">
+                            <div className="text-xs text-muted-foreground text-center p-2"
+                                style={{
+                                  // ✅ ensure placeholder text can’t intercept clicks either
+                                   pointerEvents: isEditable ? 'auto' : 'none',
+                                }}
+                            >
                               {ib.editable === false ? 'Locked image' : 'Click to add image'}
                             </div>
                           )}
 
-                          {ib.editable !== false && (
+                          {isEditable && (
                             <button
                               data-ui="true"
                               onClick={(e) => {
@@ -830,6 +840,8 @@ export default function CreateMagazinePage() {
                               }}
                               className="absolute right-1 top-1 w-7 h-7 rounded-full bg-foreground/80 text-background flex items-center justify-center opacity-90"
                               title="Replace image"
+                              style={{ pointerEvents: 'auto' }} // keep clickable
+
                             >
                               <Image className="h-4 w-4" />
                             </button>
