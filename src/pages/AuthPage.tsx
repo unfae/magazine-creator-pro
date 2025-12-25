@@ -21,6 +21,10 @@ export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const [bgImages, setBgImages] = useState<string[]>([]);
+  const [bgIndex, setBgIndex] = useState(0);
+  const [bgFadeIn, setBgFadeIn] = useState(true);
+
 
 
   const [formData, setFormData] = useState({
@@ -35,6 +39,48 @@ export default function AuthPage() {
     if (mode === 'login') setIsLogin(true);
     if (mode === 'signup') setIsLogin(false);
   }, [location.search]);
+
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      const { data, error } = await supabase
+        .from('templates')
+        .select('thumbnailUrl')
+        .eq('is_featured', true)
+        .limit(8);
+
+      if (error) return;
+
+      const urls =
+        (data ?? [])
+          .map((r: any) => (r.thumbnailUrl ?? '').trim())
+          .filter(Boolean);
+
+      if (mounted) setBgImages(urls);
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (bgImages.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setBgFadeIn(false); // start fade-out
+
+      setTimeout(() => {
+        setBgIndex((i) => (i + 1) % bgImages.length);
+        setBgFadeIn(true); // fade-in new image
+      }, 450); // fade duration
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [bgImages]);
+
 
 
   const signInWithGoogle = async () => {
@@ -92,16 +138,44 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-background flex">
       {/* LEFT */}
+     
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-foreground to-charcoal-light" />
-        <div
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage:
-              "url('https://rekjtkldpovvlkivdzqa.supabase.co/storage/v1/object/public/template_pages/signup_bg.jpg')",
-          }}
-        />
+
+        {(() => {
+          const fallback =
+            "https://rekjtkldpovvlkivdzqa.supabase.co/storage/v1/object/public/template_pages/signup_bg.jpg";
+
+          const current = bgImages[bgIndex] || fallback;
+          const next = bgImages.length ? bgImages[(bgIndex + 1) % bgImages.length] : fallback;
+
+          return (
+            <>
+              {/* current */}
+              <div
+                className="absolute inset-0 opacity-20"
+                style={{
+                  backgroundImage: `url('${current}')`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }}
+              />
+
+              {/* next (fades in/out) */}
+              <div
+                className="absolute inset-0 opacity-20 transition-opacity duration-500"
+                style={{
+                  backgroundImage: `url('${next}')`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  opacity: bgFadeIn ? 0.2 : 0,
+                }}
+              />
+            </>
+          );
+        })()}
       </div>
+
 
       {/* RIGHT */}
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
