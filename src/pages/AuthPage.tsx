@@ -139,19 +139,16 @@ export default function AuthPage() {
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-foreground to-charcoal-light" />
 
-        {/* Slider track */}
+        {/* Slider */}
         <div className="absolute inset-0 overflow-hidden">
           <div
             className="h-full flex transition-transform duration-700 ease-in-out"
-            style={{
-              width: `${Math.max(bgImages.length, 1) * 100}%`,
-              transform: `translateX(-${bgIndex * (100 / Math.max(bgImages.length, 1))}%)`,
-            }}
+            style={{ transform: `translateX(-${bgIndex * 100}%)` }}
           >
-            {(bgImages.length ? bgImages : []).map((url, i) => (
+            {bgImages.map((url, i) => (
               <div
                 key={url + i}
-                className="h-full w-full flex-shrink-0"
+                className="h-full min-w-full shrink-0"
                 style={{
                   backgroundImage: `url('${url}')`,
                   backgroundSize: 'cover',
@@ -161,6 +158,7 @@ export default function AuthPage() {
             ))}
           </div>
         </div>
+
       </div>
 
 
