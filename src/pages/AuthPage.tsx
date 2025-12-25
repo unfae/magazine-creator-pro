@@ -21,9 +21,10 @@ export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
   const [bgImages, setBgImages] = useState<string[]>([]);
   const [bgIndex, setBgIndex] = useState(0);
-  const [bgFadeIn, setBgFadeIn] = useState(true);
+  
 
 
 
@@ -70,16 +71,12 @@ export default function AuthPage() {
     if (bgImages.length <= 1) return;
 
     const interval = setInterval(() => {
-      setBgFadeIn(false); // start fade-out
-
-      setTimeout(() => {
-        setBgIndex((i) => (i + 1) % bgImages.length);
-        setBgFadeIn(true); // fade-in new image
-      }, 450); // fade duration
+      setBgIndex((i) => (i + 1) % bgImages.length);
     }, 5000);
 
     return () => clearInterval(interval);
   }, [bgImages]);
+
 
 
 
@@ -142,39 +139,30 @@ export default function AuthPage() {
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-foreground to-charcoal-light" />
 
-        {(() => {
-          const fallback =
-            "https://rekjtkldpovvlkivdzqa.supabase.co/storage/v1/object/public/template_pages/signup_bg.jpg";
-
-          const current = bgImages[bgIndex] || fallback;
-          const next = bgImages.length ? bgImages[(bgIndex + 1) % bgImages.length] : fallback;
-
-          return (
-            <>
-              {/* current */}
+        {/* Slider track */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div
+            className="h-full flex transition-transform duration-700 ease-in-out"
+            style={{
+              width: `${Math.max(bgImages.length, 1) * 100}%`,
+              transform: `translateX(-${bgIndex * (100 / Math.max(bgImages.length, 1))}%)`,
+            }}
+          >
+            {(bgImages.length ? bgImages : []).map((url, i) => (
               <div
-                className="absolute inset-0 opacity-20"
+                key={url + i}
+                className="h-full w-full flex-shrink-0"
                 style={{
-                  backgroundImage: `url('${current}')`,
+                  backgroundImage: `url('${url}')`,
                   backgroundSize: 'cover',
                   backgroundPosition: 'center',
                 }}
               />
-
-              {/* next (fades in/out) */}
-              <div
-                className="absolute inset-0 opacity-20 transition-opacity duration-500"
-                style={{
-                  backgroundImage: `url('${next}')`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  opacity: bgFadeIn ? 0.2 : 0,
-                }}
-              />
-            </>
-          );
-        })()}
+            ))}
+          </div>
+        </div>
       </div>
+
 
 
       {/* RIGHT */}
