@@ -773,18 +773,19 @@ export default function CreateMagazinePage() {
                       const bw = ib.border?.width;
                       const bc = ib.border?.color;
                       const bs = ib.border?.style ?? 'solid';
+                      const isEditable = ib.editable !== false;
 
                       return (
+
+
                         <div
                           key={ib.id}
                           data-image-slot="true"
                           className={cn(
                             'absolute overflow-hidden rounded-sm flex items-center justify-center',
-                            !slotUrl && ib.editable !== false && 'bg-gray-100/30'
+                            !slotUrl && isEditable && 'bg-gray-100/30',
+                            !isEditable && 'pointer-events-none' // ✅ allow click-through
                           )}
-
-                          
-
                           style={{
                             left: ib.x,
                             top: ib.y,
@@ -794,17 +795,14 @@ export default function CreateMagazinePage() {
                             borderRadius: ib.borderRadius ? `${ib.borderRadius}px` : undefined,
                             transform: `rotate(${ib.rotate ?? 0}deg)`,
                             border: bw && bc ? `${bw}px ${bs} ${bc}` : undefined,
-
                           }}
-                          // only allow click to replace for editable slots
-                              
                           onClick={() => {
-                            if (ib.editable === false) return;
+                            if (!isEditable) return;
                             handleReplaceSlotClick(pg.page_number, ib.id);
                           }}
-
-
                         >
+
+
                           {slotUrl ? (
                             <img
                               src={slotUrl}
