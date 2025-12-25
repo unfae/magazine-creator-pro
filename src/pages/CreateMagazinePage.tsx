@@ -395,6 +395,9 @@ export default function CreateMagazinePage() {
       return;
     }
 
+    const toastId = toast.loading('Uploading image…', { position: 'top-left' });
+
+
     setIsGenerating(true);
     try {
       const {
@@ -403,7 +406,7 @@ export default function CreateMagazinePage() {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        toast.error('Sign in required');
+        toast.error('Sign in required', { id: toastId });
         setIsGenerating(false);
         return;
       }
@@ -415,7 +418,7 @@ export default function CreateMagazinePage() {
 
       if (uploadError) {
         console.error('Upload error:', uploadError);
-        toast.error('Failed to upload image');
+        toast.error('Failed to upload image', { id: toastId });
         setIsGenerating(false);
         return;
       }
@@ -431,7 +434,7 @@ export default function CreateMagazinePage() {
         return copy;
       });
 
-      toast.success('Image replaced');
+      toast.success('Image replaced', { id: toastId });
     } catch (err) {
       console.error(err);
       toast.error('Failed to replace image');
