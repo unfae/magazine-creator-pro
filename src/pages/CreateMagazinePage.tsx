@@ -353,8 +353,15 @@ export default function CreateMagazinePage() {
   };
 
   // Open file picker to replace a single slot (set target then click hidden input)
-  const handleReplaceSlotClick = (pageNumber: number, slotId: string) => {
+  const handleReplaceSlotClick = async (pageNumber: number, slotId: string) => {
     // check the slot is editable
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error('Sign in required');
+      navigate('/auth?mode=login');
+      return;
+    }
+
     const pg = templatePages.find((p) => p.page_number === pageNumber);
     const ib = pg?.layout_json?.imageBlocks?.find((b: ImageBlock) => b.id === slotId);
     if (ib && ib.editable === false) {
@@ -932,7 +939,16 @@ export default function CreateMagazinePage() {
             />
 
             <div
-              onClick={() => bulkFileInputRef.current?.click()}
+              onClick={async () => {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) {
+                  toast.error('You must be signed in to upload images');
+                  navigate('/auth?mode=login');
+                  return;
+                }
+                bulkFileInputRef.current?.click();
+              }}
+
               className={cn(
                 'border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all',
                 photos.length === 0 ? 'border-border' : 'border-gold/30'
