@@ -15,6 +15,7 @@ export default function TemplatesPage() {
       const { data, error } = await supabase
         .from('templates')
         .select('*')
+        .eq('is_public', true)
         .order('created_at', { ascending: false });
 
       if (!error) setTemplates(data || []);
