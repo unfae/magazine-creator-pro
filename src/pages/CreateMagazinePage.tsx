@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useTemplateAccess } from '@/hooks/useTemplateAccess'
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import { logTemplateExport } from '@/lib/exportLog';
 import { PageDownloadDialog } from '@/components/PageDownloadDialog';
 
 
@@ -620,6 +621,18 @@ export default function CreateMagazinePage() {
 
       pdf.save(`${safe(userName)}_${safe(template.name)}_magazine.pdf`);
 
+      await logTemplateExport({
+        userId: user.id,
+        userEmail: user.email,
+        userName: user.user_metadata?.full_name,
+        templateId: template.id,
+        templateName: template.name,
+        exportType: 'pdf',
+        pageCount: templatePages.length,
+        meta: { templateSlug: template.slug },
+      });
+
+
       toast.success('Magazine exported successfully');
     } catch (err) {
       console.error(err);
@@ -1014,7 +1027,12 @@ export default function CreateMagazinePage() {
       <div className="flex flex-wrap justify-end gap-3 mt-4">
         
           
-        <PageDownloadDialog pageNumbers={pageNumbers} />
+        <PageDownloadDialog
+          pageNumbers={pageNumbers}
+          templateId={template.id}
+          templateName={template.name}
+        />
+
 
         <Button
           variant="outline"

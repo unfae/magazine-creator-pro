@@ -2,6 +2,9 @@
 import React from 'react';
 import { usePageImageDownload } from '@/hooks/usePageImageDownload';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/lib/supabase';
+import { logTemplateExport } from '@/lib/exportLog';
+
 import {
   Dialog,
   DialogContent,
@@ -14,11 +17,16 @@ import {
 
 type PageDownloadDialogProps = {
   pageNumbers: number[];
+  templateId: string;
+  templateName: string;
   triggerLabel?: string;
 };
 
+
 export function PageDownloadDialog({
   pageNumbers,
+  templateId,
+  templateName,
   triggerLabel = 'Download as Images',
 }: PageDownloadDialogProps) {
   const {
@@ -41,11 +49,41 @@ export function PageDownloadDialog({
   const handleDownloadAll = async () => {
     setSelectedPages(pageNumbers);
     await downloadSelected();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await logTemplateExport({
+        userId: user.id,
+        userEmail: user.email,
+        userName: user.user_metadata?.full_name,
+        templateId,
+        templateName,
+        exportType: 'images',
+        pageCount: pageNumbers.length,
+        meta: { pages: pageNumbers, mode: 'all' },
+      });
+    }
   };
 
+
   const handleConfirm = async () => {
-    await downloadSelected();
-  };
+  await downloadSelected();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    await logTemplateExport({
+      userId: user.id,
+      userEmail: user.email,
+      userName: user.user_metadata?.full_name,
+      templateId,
+      templateName,
+      exportType: 'images',
+      pageCount: selectedPages.length,
+      meta: { pages: selectedPages, mode: 'selected' },
+    });
+  }
+};
+
 
   const selectedCount = selectedPages.length;
 
