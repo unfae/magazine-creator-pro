@@ -1,3 +1,6 @@
+import { supabase } from '@/lib/supabase';
+
+
 export async function logTemplateExport(params: {
   userId: string;
   userEmail?: string | null;
