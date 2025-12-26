@@ -621,16 +621,20 @@ export default function CreateMagazinePage() {
 
       pdf.save(`${safe(userName)}_${safe(template.name)}_magazine.pdf`);
 
-      await logTemplateExport({
-        userId: user.id,
-        userEmail: user.email,
-        userName: user.user_metadata?.full_name,
-        templateId: template.id,
-        templateName: template.name,
-        exportType: 'pdf',
-        pageCount: templatePages.length,
-        meta: { templateSlug: template.slug },
-      });
+      try {
+        await logTemplateExport({
+          userId: user.id,
+          userEmail: user.email,
+          userName: user.user_metadata?.full_name,
+          templateId: template.id,
+          templateName: template.name,
+          exportType: 'pdf',
+          pageCount: templatePages.length,
+          meta: { templateSlug: template.slug },
+        });
+      } catch (e) {
+        console.error('Export logging failed', e);
+      }  
 
 
       toast.success('Magazine exported successfully');
