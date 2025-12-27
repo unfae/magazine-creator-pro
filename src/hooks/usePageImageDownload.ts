@@ -34,7 +34,7 @@ export function usePageImageDownload() {
       const html2canvas: typeof html2canvasType = (await import('html2canvas')).default;
 
       const pages = [...selectedPages].sort((a, b) => a - b);
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      //const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
 
       for (const pageNumber of pages) {
