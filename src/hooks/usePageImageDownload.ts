@@ -25,6 +25,12 @@ export function usePageImageDownload() {
 
     setDownloading(true);
     try {
+
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      // ✅ open popup synchronously (prevents Safari popup blocker)
+      const popupRef = isIOS ? window.open('', '_blank') : null;
+
+
       const html2canvas: typeof html2canvasType = (await import('html2canvas')).default;
 
       const pages = [...selectedPages].sort((a, b) => a - b);
@@ -99,15 +105,14 @@ export function usePageImageDownload() {
             // iOS Safari often ignores a.download; open the blob inste
 
             if (isIOS) {
-              window.open(url, '_blank'); // user can long-press “Save Image”
+              // ✅ reuse the already-opened tab so Safari doesn't block it
+              if (popupRef) popupRef.location.href = url;
+
               setTimeout(() => URL.revokeObjectURL(url), 30_000);
-
               resolve();
-
-              // ✅ IMPORTANT: stop after the first image on iOS (prevents popup blocking)
-              setDownloading(false);
               return;
             }
+
 
 
             const a = document.createElement('a');
