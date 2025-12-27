@@ -80,6 +80,8 @@ export default function CreateMagazinePage() {
   const filesRef = useRef<File[]>([]); // raw files for bulk upload
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadingTemplate, setLoadingTemplate] = useState(true);
+  const [isSignedIn, setIsSignedIn] = useState(false);
+
 
   // new states for template pages and per-page user content
   const [templatePages, setTemplatePages] = useState<TemplatePage[]>([]);
@@ -196,6 +198,23 @@ export default function CreateMagazinePage() {
       ensureGoogleFontsLoaded([...fontsUsed]);
     })();
   }, [templatePages]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (mounted) setIsSignedIn(!!data.session);
+    });
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsSignedIn(!!session);
+    });
+
+    return () => {
+      mounted = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
 
 
   if (loadingTemplate) {
@@ -377,10 +396,8 @@ export default function CreateMagazinePage() {
   };
 
   // Open file picker to replace a single slot (set target then click hidden input)
-  const handleReplaceSlotClick = async (pageNumber: number, slotId: string) => {
-    // check the slot is editable
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+  const handleReplaceSlotClick = (pageNumber: number, slotId: string) => {
+    if (!isSignedIn) {
       toast.error('Sign in required');
       navigate('/auth?mode=login');
       return;
@@ -388,19 +405,17 @@ export default function CreateMagazinePage() {
 
     const pg = templatePages.find((p) => p.page_number === pageNumber);
     const ib = pg?.layout_json?.imageBlocks?.find((b: ImageBlock) => b.id === slotId);
-    if (ib && ib.editable === false) {
-      // do nothing for non-editable slot
-      return;
-    }
+    if (ib && ib.editable === false) return;
 
     if (!hasTemplateAccess) {
-      openPaywall(); // from your guard
+      openPaywall();
       return;
     }
 
     currentSlotTargetRef.current = { pageNumber, slotId };
     if (perSlotFileInputRef.current) perSlotFileInputRef.current.click();
   };
+
 
   // Handle single-slot file selection
   const handlePerSlotFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -984,21 +999,20 @@ export default function CreateMagazinePage() {
             />
 
             <div
-              onClick={async () => {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) {
+              onClick={() => {
+                if (!isSignedIn) {
                   toast.error('You must be signed in to upload images');
                   navigate('/auth?mode=login');
                   return;
                 }
                 bulkFileInputRef.current?.click();
               }}
-
               className={cn(
                 'border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all',
                 photos.length === 0 ? 'border-border' : 'border-gold/30'
               )}
             >
+
               <div className="flex flex-col items-center gap-2">
                 <Upload className="h-6 w-6 text-muted-foreground" />
                 <p className="font-medium">Click to upload photos</p>
