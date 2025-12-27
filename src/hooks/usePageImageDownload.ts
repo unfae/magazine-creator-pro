@@ -28,6 +28,8 @@ export function usePageImageDownload() {
       const html2canvas: typeof html2canvasType = (await import('html2canvas')).default;
 
       const pages = [...selectedPages].sort((a, b) => a - b);
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
 
       for (const pageNumber of pages) {
         const original = document.getElementById(`page-${pageNumber}`);
@@ -94,16 +96,19 @@ export function usePageImageDownload() {
 
             const url = URL.createObjectURL(blob);
 
-            // iOS Safari often ignores a.download; open the blob instead
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            // iOS Safari often ignores a.download; open the blob inste
 
             if (isIOS) {
               window.open(url, '_blank'); // user can long-press “Save Image”
-              // revoke later
               setTimeout(() => URL.revokeObjectURL(url), 30_000);
+
               resolve();
+
+              // ✅ IMPORTANT: stop after the first image on iOS (prevents popup blocking)
+              setDownloading(false);
               return;
             }
+
 
             const a = document.createElement('a');
             a.href = url;
@@ -116,6 +121,7 @@ export function usePageImageDownload() {
           }, 'image/jpeg', 0.95);
         });
 
+        if (isIOS) break;
 
         await new Promise((r) => setTimeout(r, 400));
       }

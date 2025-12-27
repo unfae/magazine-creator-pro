@@ -38,6 +38,9 @@ export function PageDownloadDialog({
     setSelectedPages,
   } = usePageImageDownload();
 
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+
   const [open, setOpen] = React.useState(false);
 
   if (pageNumbers.length === 0) return null;
@@ -110,18 +113,24 @@ export function PageDownloadDialog({
               <p className="text-xs text-muted-foreground">
                 Tap pages to select or deselect.
               </p>
+
+              {isIOS && (
+                <p className="text-xs text-muted-foreground">
+                  iPhone/iPad only allows one page to downlaod at a time.
+                </p>
+              )}
+
               <p className="text-xs text-muted-foreground">
                 Currently selected: {selectedCount} / {pageNumbers.length}
               </p>
             </div>
             <div className="flex items-center gap-3 text-xs">
-              <button
-                type="button"
-                onClick={handleSelectAll}
-                className="underline"
-              >
-                Select all
-              </button>
+              {!isIOS && (
+                <button type="button" onClick={handleSelectAll} className="underline">
+                  Select all
+                </button>
+              )}
+
               {selectedCount > 0 && (
                 <button
                   type="button"
@@ -141,7 +150,14 @@ export function PageDownloadDialog({
                 <button
                   key={n}
                   type="button"
-                  onClick={() => togglePage(n)}
+                  onClick={() => {
+                    if (isIOS) {
+                      setSelectedPages([n]);   // force single selection on iOS
+                    } else {
+                      togglePage(n);
+                    }
+                  }}
+
                   className={[
                     'px-2 py-1 text-xs rounded border transition-colors',
                     isSelected
