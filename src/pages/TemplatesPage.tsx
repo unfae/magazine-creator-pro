@@ -3,7 +3,7 @@ import { TemplateCard } from '@/components/templates/TemplateCard';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase'; // 👈 ADDED
 
-const categories = ['All', 'Fashion', 'Travel', 'Family', 'Portfolio', 'Wedding', 'Street'];
+const categories = ['All', 'Fashion', 'Travel', 'Family', 'Memories', 'Wedding', 'Faith'];
 
 export default function TemplatesPage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
