@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { logTemplateExport } from '@/lib/exportLog';
 import { PageDownloadDialog } from '@/components/PageDownloadDialog';
+import { getAllowedFontsCached, ensureGoogleFontsLoaded } from '@/lib/fontLoader';
+
 
 
 type TextBlock = {
@@ -174,6 +176,27 @@ export default function CreateMagazinePage() {
       mounted = false;
     };
   }, [templateId]);
+
+  useEffect(() => {
+    if (templatePages.length === 0) return;
+
+    (async () => {
+      const allowed = await getAllowedFontsCached();
+      const allowedSet = new Set(allowed.map((f) => f.toLowerCase()));
+
+      // Collect fonts used by this template’s text blocks
+      const fontsUsed = new Set<string>();
+      templatePages.forEach((pg) => {
+        (pg.layout_json?.textBlocks ?? []).forEach((tb: any) => {
+          const f = (tb.fontFamily ?? '').trim();
+          if (f && allowedSet.has(f.toLowerCase())) fontsUsed.add(f);
+        });
+      });
+
+      ensureGoogleFontsLoaded([...fontsUsed]);
+    })();
+  }, [templatePages]);
+
 
   if (loadingTemplate) {
     return (
