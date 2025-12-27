@@ -930,6 +930,8 @@ export default function CreateMagazinePage() {
                             transform: `rotate(${tb.rotate ?? 0}deg)`,
                             fontWeight: tb.fontWeight ?? undefined,
                             fontFamily: tb.fontFamily ?? 'inherit',
+                            whiteSpace: 'pre-wrap',
+
                           }}
                           onClick={(e) => {
                             if (tb.editable === false) {
