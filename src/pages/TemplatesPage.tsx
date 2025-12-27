@@ -76,7 +76,7 @@ export default function TemplatesPage() {
 
       {!loading && filteredTemplates.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">No templates found in this category.</p>
+          <p className="text-muted-foreground">No templates yet in this category. Kindly check back soon</p>
         </div>
       )}
     </div>
