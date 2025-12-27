@@ -86,14 +86,36 @@ export function usePageImageDownload() {
           ctx.drawImage(baseCanvas, 0, 0, canvas.width, canvas.height);
         }
 
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+        const filename = `magazine-page-${pageNumber}.jpg`;
 
-        const a = document.createElement('a');
-        a.href = dataUrl;
-        a.download = `magazine-page-${pageNumber}.jpg`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        await new Promise<void>((resolve) => {
+          canvas.toBlob((blob) => {
+            if (!blob) return resolve();
+
+            const url = URL.createObjectURL(blob);
+
+            // iOS Safari often ignores a.download; open the blob instead
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+            if (isIOS) {
+              window.open(url, '_blank'); // user can long-press “Save Image”
+              // revoke later
+              setTimeout(() => URL.revokeObjectURL(url), 30_000);
+              resolve();
+              return;
+            }
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            resolve();
+          }, 'image/jpeg', 0.95);
+        });
+
 
         await new Promise((r) => setTimeout(r, 400));
       }

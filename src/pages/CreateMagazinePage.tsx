@@ -927,7 +927,7 @@ export default function CreateMagazinePage() {
                           suppressContentEditableWarning
                           onBlur={(e: any) => {
                             if (!isEditable) return;
-                            handleTextChange(pg.page_number, tb.id, e.currentTarget.textContent);
+                            handleTextChange(pg.page_number, tb.id, (e.currentTarget as HTMLElement).innerText);
                           }}
                           className={cn('absolute', !isEditable && 'select-none')}
                           style={{
