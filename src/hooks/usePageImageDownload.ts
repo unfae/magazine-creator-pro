@@ -62,6 +62,27 @@ export function usePageImageDownload() {
         // Remove editor-only UI
         clone.querySelectorAll('[data-ui="true"]').forEach((el) => el.remove());
 
+        // Export-only: prevent html2canvas baseline quirks from clipping descenders
+        clone.querySelectorAll('[data-text-block="true"]').forEach((el) => {
+          const t = el as HTMLElement;
+          t.style.overflow = "visible";
+          t.style.boxSizing = "border-box";
+          t.style.paddingBottom = "3px";
+
+           // font-size-relative nudge (export only)
+          const fs = parseFloat(getComputedStyle(t).fontSize || "16");
+          const yshift = Math.round(fs * 0.08); // 8% of font size (tweak 0.05–0.12)
+
+          // preserve existing rotate transform
+          const existing = getComputedStyle(t).transform;
+          if (existing && existing !== "none") {
+            t.style.transform = `${existing} translateY(${-yshift}px)`;
+          } else {
+            t.style.transform = `translateY(${-yshift}px)`;
+          }
+        });
+
+
         // Normalize size & position (ignore preview scale)
         clone.style.width = `${PAGE_WIDTH}px`;
         clone.style.height = `${PAGE_HEIGHT}px`;
@@ -71,6 +92,8 @@ export function usePageImageDownload() {
         clone.style.top = '0';
 
         document.body.appendChild(clone);
+
+        await document.fonts.ready;
 
         // 2) High-res render
         const baseCanvas = await html2canvas(clone, {
