@@ -44,7 +44,7 @@ const App = () => (
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/templates" element={<TemplatesPage />} />
-              <Route path="/dev/page-json-generator" element={<PageJsonGenerator />} />
+              <Route path="/page-json-generator" element={<PageJsonGenerator />} />
 
               {/* Authenticated */}
               <Route path="/dashboard" element={<DashboardPage />} />
