@@ -631,7 +631,16 @@ export default function CreateMagazinePage() {
         // Remove UI-only elements (buttons, icons, etc.)
         clone.querySelectorAll('[data-ui="true"]').forEach((el) => el.remove());
 
+        // Prevent html2canvas text baseline/linebox differences from clipping descenders
+        clone.querySelectorAll('[data-text-block="true"]').forEach((el) => {
+          const t = el as HTMLElement;
+          t.style.overflow = "visible";
+          t.style.boxSizing = "border-box";
+          t.style.paddingBottom = "3px";
+        });
+
         document.body.appendChild(clone);
+        await document.fonts.ready;
 
         const canvas = await html2canvas(clone, {
           scale: SCALE,
@@ -924,6 +933,7 @@ export default function CreateMagazinePage() {
                       return (
                         <div
                           key={tb.id}
+                          data-text-block="true"
                           contentEditable={isEditable}
                           suppressContentEditableWarning
                           onBlur={(e: any) => {
