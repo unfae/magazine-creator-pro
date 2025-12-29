@@ -19,6 +19,8 @@ import NotFound from "@/pages/NotFound";
 import AuthCallback from "@/pages/AuthCallback";
 import CheckEmailPage from "@/pages/CheckEmailPage";
 import { AuthProvider } from '@/context/AuthContext';
+import PageJsonGenerator from "@/pages/PageJsonGenerator";
+
 
 
 
@@ -42,6 +44,7 @@ const App = () => (
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/templates" element={<TemplatesPage />} />
+              <Route path="/dev/page-json-generator" element={<PageJsonGenerator />} />
 
               {/* Authenticated */}
               <Route path="/dashboard" element={<DashboardPage />} />
