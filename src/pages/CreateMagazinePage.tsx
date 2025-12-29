@@ -950,11 +950,12 @@ export default function CreateMagazinePage() {
                             display: "flex",
                             alignItems: "center",
                             justifyContent:
-                              tb.vAlign === "top"
+                              (tb.vAlign ?? "middle") === "top"
                                 ? "flex-start"
-                                : tb.vAlign === "bottom"
+                                : (tb.vAlign ?? "middle") === "bottom"
                                   ? "flex-end"
                                   : "center",
+
 
 
                           }}
