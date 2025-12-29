@@ -71,7 +71,7 @@ export function usePageImageDownload() {
 
            // font-size-relative nudge (export only)
           const fs = parseFloat(getComputedStyle(t).fontSize || "16");
-          const yshift = Math.round(fs * 0.08); // 8% of font size (tweak 0.05–0.12)
+          const yshift = Math.round(fs * 0.3); // 8% of font size (tweak 0.05–0.12)
 
           // preserve existing rotate transform
           const existing = getComputedStyle(t).transform;
