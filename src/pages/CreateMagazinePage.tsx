@@ -29,6 +29,7 @@ type TextBlock = {
   color?: string;
   align?: string;
   zIndex?: number;
+  vAlign?: "top" | "middle" | "bottom";   // <-- add this
   rotate?: number;
   editable?: boolean;
 };
@@ -946,6 +947,15 @@ export default function CreateMagazinePage() {
                             fontWeight: tb.fontWeight ?? undefined,
                             fontFamily: tb.fontFamily ?? 'inherit',
                             whiteSpace: 'pre-wrap',
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent:
+                              tb.vAlign === "top"
+                                ? "flex-start"
+                                : tb.vAlign === "bottom"
+                                  ? "flex-end"
+                                  : "center",
+
 
                           }}
                           onClick={(e) => {
