@@ -62,25 +62,7 @@ export function usePageImageDownload() {
         // Remove editor-only UI
         clone.querySelectorAll('[data-ui="true"]').forEach((el) => el.remove());
 
-        // Export-only: prevent html2canvas baseline quirks from clipping descenders
-        clone.querySelectorAll('[data-text-block="true"]').forEach((el) => {
-          const t = el as HTMLElement;
-          t.style.overflow = "visible";
-          t.style.boxSizing = "border-box";
-          t.style.paddingBottom = "3px";
 
-           // font-size-relative nudge (export only)
-          const fs = parseFloat(getComputedStyle(t).fontSize || "16");
-          const yshift = Math.round(fs * 0.5); // 30% of font size (tweak 0.05–0.12)
-
-          // preserve existing rotate transform
-          const existing = getComputedStyle(t).transform;
-          if (existing && existing !== "none") {
-            t.style.transform = `${existing} translateY(${-yshift}px)`;
-          } else {
-            t.style.transform = `translateY(${-yshift}px)`;
-          }
-        });
 
 
         // Normalize size & position (ignore preview scale)
@@ -94,6 +76,24 @@ export function usePageImageDownload() {
         document.body.appendChild(clone);
 
         await document.fonts.ready;
+
+        // Export-only: prevent html2canvas baseline quirks from clipping descenders
+        clone.querySelectorAll('[data-text-block="true"]').forEach((el) => {
+          const t = el as HTMLElement;
+          t.style.overflow = "visible";
+          t.style.boxSizing = "border-box";
+          t.style.paddingBottom = "3px";
+
+           // font-size-relative nudge (export only)
+          const cs = getComputedStyle(t);
+          const fs = parseFloat(cs.fontSize || "16");
+          const yshift = Math.round(fs * 0.08); // start 0.06–0.12
+
+          // IMPORTANT: use the element's INLINE transform as base (not computedStyle)
+          // because computedStyle may already include matrix() and concatenation gets messy.
+          const base = t.style.transform || ""; // e.g. "rotate(15deg)" from your inline styles
+          t.style.transform = `${base} translateY(${-yshift}px)`.trim();
+        });
 
         // 2) High-res render
         const baseCanvas = await html2canvas(clone, {
