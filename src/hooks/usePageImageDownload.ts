@@ -34,7 +34,8 @@ export function usePageImageDownload() {
       const pages = [...selectedPages].sort((a, b) => a - b);
 
       for (const pageNumber of pages) {
-        const original = document.getElementById(`page-export-${pageNumber}`);
+        const original = document.getElementById(`page-${pageNumber}`);
+
 
         if (!original) continue;
 

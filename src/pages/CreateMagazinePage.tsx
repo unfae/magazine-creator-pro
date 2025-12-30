@@ -29,7 +29,6 @@ type TextBlock = {
   color?: string;
   align?: string;
   zIndex?: number;
-  vAlign?: "top" | "middle" | "bottom";   // <-- add this
   rotate?: number;
   editable?: boolean;
 };
@@ -599,7 +598,8 @@ export default function CreateMagazinePage() {
 
       for (let i = 0; i < templatePages.length; i++) {
         const pg = templatePages[i];
-        const original = document.getElementById(`page-export-${pg.page_number}`);
+        const original = document.getElementById(`page-${pg.page_number}`);
+
 
         if (!original) continue;
 
@@ -958,171 +958,6 @@ export default function CreateMagazinePage() {
                             fontWeight: tb.fontWeight ?? undefined,
                             fontFamily: tb.fontFamily ?? 'inherit',
                             whiteSpace: 'pre-wrap',
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent:
-                              (tb.vAlign ?? "middle") === "top"
-                                ? "flex-start"
-                                : (tb.vAlign ?? "middle") === "bottom"
-                                  ? "flex-end"
-                                  : "center",
-
-
-
-                          }}
-                          onClick={(e) => {
-                            if (tb.editable === false) {
-                              e.preventDefault();
-                              e.stopPropagation();
-                            }
-                          }}
-                        >
-                          {currentText}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  
-                  <div
-                    id={`page-export-${pg.page_number}`}
-                    className="relative overflow-hidden"
-                    style={{
-                      width: PAGE_WIDTH,
-                      height: PAGE_HEIGHT,
-                      backgroundImage: `url(${bgUrl})`,
-                      backgroundSize: "cover",
-                      backgroundPosition: "center",
-                      position: "absolute",
-                      left: "-99999px",
-                      top: "0px",
-                    }}
-                  >
-
-                    {/* Render image placeholders.. */}
-                    {(layout.imageBlocks ?? []).map((ib: ImageBlock) => {
-                      const slotUrl = (userImages[pg.page_number] || {})[ib.id] || ib.defaultImageUrl || '';
-                      
-                      const bw = ib.border?.width;
-                      const bc = ib.border?.color;
-                      const bs = ib.border?.style ?? 'solid';
-                      const isEditable = ib.editable !== false;
-
-                      return (
-
-
-                        <div
-                          key={ib.id}
-                          data-image-slot="true"
-                          className={cn(
-                            'absolute overflow-hidden rounded-sm flex items-center justify-center',
-                            !slotUrl && isEditable && 'bg-gray-100/30',
-                            !isEditable && 'pointer-events-none' // ✅ allow click-through
-                          )}
-                          style={{
-                            left: ib.x,
-                            top: ib.y,
-                            width: ib.width,
-                            height: ib.height,
-                            zIndex: ib.zIndex ?? 1,
-                            borderRadius: ib.borderRadius ? `${ib.borderRadius}px` : undefined,
-                            transform: `rotate(${ib.rotate ?? 0}deg)`,
-                            border: bw && bc ? `${bw}px ${bs} ${bc}` : undefined,
-                            // ✅ hard-enforce click-through for locked/uneditable slots
-                            pointerEvents: isEditable ? 'auto' : 'none',
-
-                          }}
-                          onClick={() => {
-                            if (!isEditable) return;
-                            handleReplaceSlotClick(pg.page_number, ib.id);
-                          }}
-                        >
-
-
-                          {slotUrl ? (
-                            <img
-                              src={slotUrl}
-                              crossOrigin="anonymous"
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover',
-                                objectPosition: 'center',
-                                borderRadius: ib.borderRadius ? `${ib.borderRadius}px` : undefined,
-                                // ✅ also ensure the image itself can’t intercept clicks
-                                pointerEvents: isEditable ? 'auto' : 'none',
-                              }}
-                            />
-                          ) : (
-                            <div className="text-xs text-muted-foreground text-center p-2"
-                                style={{
-                                  // ✅ ensure placeholder text can’t intercept clicks either
-                                   pointerEvents: isEditable ? 'auto' : 'none',
-                                }}
-                            >
-                              {ib.editable === false ? 'Locked image' : 'Click to add image'}
-                            </div>
-                          )}
-
-                          {isEditable && (
-                            <button
-                              data-ui="true"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleReplaceSlotClick(pg.page_number, ib.id);
-                              }}
-                              className="absolute right-1 top-1 w-7 h-7 rounded-full bg-foreground/80 text-background flex items-center justify-center opacity-90"
-                              title="Replace image"
-                              style={{ pointerEvents: 'auto' }} // keep clickable
-
-                            >
-                              <Image className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                      {/* Render text placeholders (inline editable) */}
-                    {(layout.textBlocks ?? []).map((tb: TextBlock) => {
-                      const currentText = (userTexts[pg.page_number] || {})[tb.id] ?? tb.defaultText ?? '';
-                      const isEditable = tb.editable !== false;
-
-                      return (
-                        <div
-                          key={tb.id}
-                          data-text-block="true"
-                          contentEditable={isEditable}
-                          suppressContentEditableWarning
-                          onBlur={(e: any) => {
-                            if (!isEditable) return;
-                            handleTextChange(pg.page_number, tb.id, (e.currentTarget as HTMLElement).innerText);
-                          }}
-                          className={cn('absolute', !isEditable && 'select-none')}
-                          style={{
-                            left: tb.x,
-                            top: tb.y,
-                            width: tb.width,
-                            height: tb.height,
-                            fontSize: (tb.fontSize ?? 16) as number,
-                            color: tb.color ?? 'inherit',
-                            textAlign: tb.align as any,
-                            lineHeight: tb.lineHeight ? `${tb.lineHeight}px` : undefined,
-                            letterSpacing: tb.letterSpacing ? `${tb.letterSpacing}px` : undefined,
-                            overflow: 'hidden',
-                            zIndex: tb.zIndex ?? 2,
-                            transform: `rotate(${tb.rotate ?? 0}deg)`,
-                            fontWeight: tb.fontWeight ?? undefined,
-                            fontFamily: tb.fontFamily ?? 'inherit',
-                            whiteSpace: 'pre-wrap',
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent:
-                              (tb.vAlign ?? "middle") === "top"
-                                ? "flex-start"
-                                : (tb.vAlign ?? "middle") === "bottom"
-                                  ? "flex-end"
-                                  : "center",
-
 
 
                           }}
