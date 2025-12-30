@@ -34,7 +34,8 @@ export function usePageImageDownload() {
       const pages = [...selectedPages].sort((a, b) => a - b);
 
       for (const pageNumber of pages) {
-        const original = document.getElementById(`page-${pageNumber}`);
+        const original = document.getElementById(`page-export-${pageNumber}`);
+
         if (!original) continue;
 
         // 1) Clone node (keep your existing approach)
