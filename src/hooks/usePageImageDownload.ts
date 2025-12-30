@@ -108,6 +108,8 @@ export function usePageImageDownload() {
               // Use inline transform as base (keeps rotate, avoids matrix parsing)
               const base = t.style.transform || "";
               t.style.transform = `${base} translateY(${-yshift}px)`.trim();
+              t.style.outline = "3px solid red";
+
             });
           },
         });
