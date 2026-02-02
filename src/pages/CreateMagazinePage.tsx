@@ -873,41 +873,7 @@ export default function CreateMagazinePage() {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Bulk Text Edit</label>
-            {(() => {
-              const groupedBlocks = templatePages.reduce((acc, pg) => {
-                (pg.layout_json?.textBlocks ?? []).forEach(tb => {
-                  if (tb.id) {
-                    acc[tb.id] = acc[tb.id] || [];
-                    acc[tb.id].push(tb);
-                  }
-                });
-                return acc;
-              }, {} as Record<string, TextBlock[]>);
-
-              return Object.entries(groupedBlocks).map(([id, blocks]) => (
-                <BulkTextEdit
-                  key={id}
-                  textId={id}
-                  onBulkEdit={(id, value) => {
-                    setBulkTextValues(prev => ({ ...prev, [id]: value }));
-                    setUserTexts(prev => {
-                      const next = { ...prev };
-                      templatePages.forEach(pg => {
-                        const pn = pg.page_number;
-                        next[pn] = { ...(next[pn] || {}) };
-                        next[pn][id] = value;
-                      });
-                      return next;
-                    });
-                  }}
-                />
-              ));
-            })()}
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Upload Photos (bulk)</label>
+            <label className="block text-sm font-medium mb-2">Bulk Image Upload</label>
             <p className="text-sm text-muted-foreground mb-3">
               Upload all your photos and we will apply them to the template automatically. You can adjust each page
               afterwards.
@@ -969,6 +935,35 @@ export default function CreateMagazinePage() {
                 Upload & Apply
               </Button>
             </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Bulk Text Edit</label>
+            {(() => {
+              const textIds = [...new Set(templatePages.flatMap(pg => 
+                (pg.layout_json?.textBlocks ?? []).map(tb => tb.id)
+              ))];
+
+              return (
+                <BulkTextEdit
+                  textIds={textIds}
+                  onBulkEdit={(values) => {
+                    setBulkTextValues(prev => ({ ...prev, ...values }));
+                    setUserTexts(prev => {
+                      const next = { ...prev };
+                      templatePages.forEach(pg => {
+                        const pn = pg.page_number;
+                        next[pn] = { ...(next[pn] || {}) };
+                        Object.entries(values).forEach(([id, value]) => {
+                          next[pn][id] = value;
+                        });
+                      });
+                      return next;
+                    });
+                  }}
+                />
+              );
+            })()}
           </div>
         </div>
       </Card>

@@ -1,37 +1,44 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input'; // Correct import
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 interface BulkTextEditProps {
-  textId: string;
-  onBulkEdit: (id: string, value: string) => void;
+  textIds: string[];
+  onBulkEdit: (values: Record<string, string>) => void;
 }
 
-export function BulkTextEdit({ textId, onBulkEdit }: BulkTextEditProps) {
-  const [value, setValue] = useState('');
+export function BulkTextEdit({ textIds, onBulkEdit }: BulkTextEditProps) {
+  const [values, setValues] = useState<Record<string, string>>({});
 
-  const handleBulkEdit = () => {
-    if (value.trim()) {
-      onBulkEdit(textId, value);
-      setValue('');
-    }
+  const handleChange = (id: string, value: string) => {
+    setValues(prev => ({ ...prev, [id]: value }));
+  };
+
+  const handleApplyAll = () => {
+    onBulkEdit(values);
   };
 
   return (
     <div className="p-2 border rounded mb-2">
-      <Label htmlFor={textId}>Bulk Edit: {textId}</Label>
-      <div className="flex gap-2 mt-1">
-        <Input
-          id={textId}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder={`Enter text for ${textId}`}
-        />
-        <Button onClick={handleBulkEdit} size="sm">
-          Apply to All
-        </Button>
+      <Label>Enter your details.</Label>
+      <p className="text-sm text-muted-foreground mb-2">
+        Enter your details here once to apply in all places and manually edit if needed.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 max-h-60 overflow-y-auto">
+        {textIds.map(id => (
+          <Input
+            key={id}
+            value={values[id] || ''}
+            onChange={(e) => handleChange(id, e.target.value)}
+            placeholder={`Enter text for ${id}`}
+            className="w-full"
+          />
+        ))}
       </div>
+      <Button onClick={handleApplyAll} size="sm" className="mt-2">
+        Apply to All
+      </Button>
     </div>
   );
 }
