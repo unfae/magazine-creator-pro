@@ -289,25 +289,34 @@ export default function CreateMagazinePage() {
     setUserImages((prev) => {
       const next = structuredClone(prev);
 
+      // Flatten all editable slots across all pages
+      const allSlots: { pageNumber: number; slotId: string }[] = [];
       for (const pg of templatePages) {
         const layout = pg.layout_json;
         if (!layout?.imageBlocks) continue;
-
         for (const ib of layout.imageBlocks) {
-          if (ib.editable === false) continue;
-
-          note: if (!next[pg.page_number]?.[ib.id]) {
-            next[pg.page_number] ??= {};
-            next[pg.page_number][ib.id] = imageUrl;
-            return next;
+          if (ib.editable !== false) {
+            allSlots.push({ pageNumber: pg.page_number, slotId: ib.id });
           }
         }
       }
 
-      return next; // no empty slots left
-      
+      // Flatten all uploaded images (in order)
+      const allImageUrls = photos;
+
+      // Cycle through slots and assign images in order, repeating if needed
+      for (let i = 0; i < allSlots.length; i++) {
+        const slot = allSlots[i];
+        const imageUrl = allImageUrls[i % allImageUrls.length]; // repeat if not enough images
+
+        next[slot.pageNumber] ??= {};
+        next[slot.pageNumber][slot.slotId] = imageUrl;
+      }
+
+      return next;
     });
   };
+
 
 
   // Upload all bulk files to storage and apply to placeholders
