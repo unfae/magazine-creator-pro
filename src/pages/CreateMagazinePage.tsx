@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase';
 import { logTemplateExport } from '@/lib/exportLog';
 import { PageDownloadDialog } from '@/components/PageDownloadDialog';
 import { getAllowedFontsCached, ensureGoogleFontsLoaded } from '@/lib/fontLoader';
+import { BulkTextEdit } from '@/components/BulkTextEdit';
 
 
 
@@ -88,6 +89,7 @@ export default function CreateMagazinePage() {
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const pageNumbers = templatePages.map((pg) => pg.page_number);
 
+  const [bulkTextValues, setBulkTextValues] = useState<Record<string, string>>({});
 
   const templatePay = template
 
@@ -122,6 +124,7 @@ export default function CreateMagazinePage() {
         .select('*')
         .eq('id', templateId)
         .single();
+
 
       if (tErr || !tmpl) {
         console.error('Error fetching template:', tErr);
@@ -163,6 +166,17 @@ export default function CreateMagazinePage() {
           // note: defaultImageUrl is not stored in userImages; userImages only contains user-supplied urls
           initialImages[pn][ib.id] = ''; // empty until user uploads or bulk assign
         });
+
+        // In fetchTemplateAndPages, after initializing initialTexts
+
+        Object.entries(bulkTextValues).forEach(([id, value]) => {
+          templatePages.forEach(pg => {
+            const pn = pg.page_number;
+            initialTexts[pn][id] = value;
+          });
+        });
+
+
       });
 
       setTemplate(tmpl);
@@ -1003,6 +1017,43 @@ export default function CreateMagazinePage() {
               placeholder="e.g., Summer Memories 2025"
               className="max-w-md"
             />
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Bulk Text Edit</label>
+              {(() => {
+                // Group text blocks by id
+                const groupedBlocks = templatePages.reduce((acc, pg) => {
+                  (pg.layout_json?.textBlocks ?? []).forEach(tb => {
+                    if (tb.id) {
+                      acc[tb.id] = acc[tb.id] || [];
+                      acc[tb.id].push(tb);
+                    }
+                  });
+                  return acc;
+                }, {} as Record<string, TextBlock[]>);
+
+                return Object.entries(groupedBlocks).map(([id, blocks]) => (
+                  <BulkTextEdit
+                    key={id}
+                    textId={id}
+                    onBulkEdit={(id, value) => {
+                      setBulkTextValues(prev => ({ ...prev, [id]: value }));
+                      // Update userTexts for all pages
+                      setUserTexts(prev => {
+                        const next = { ...prev };
+                        templatePages.forEach(pg => {
+                          const pn = pg.page_number;
+                          next[pn] = { ...(next[pn] || {}) };
+                          next[pn][id] = value;
+                        });
+                        return next;
+                      });
+                    }}
+                  />
+                ));
+              })()}
+            </div>
+
           </div>
 
           <div className="mb-4">
