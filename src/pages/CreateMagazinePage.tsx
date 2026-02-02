@@ -13,8 +13,6 @@ import { PageDownloadDialog } from '@/components/PageDownloadDialog';
 import { getAllowedFontsCached, ensureGoogleFontsLoaded } from '@/lib/fontLoader';
 import { BulkTextEdit } from '@/components/BulkTextEdit';
 
-
-
 type TextBlock = {
   id: string;
   x: number;
@@ -35,11 +33,10 @@ type TextBlock = {
 };
 
 type ImageBorder = {
-  width?: number;         // px
-  color?: string;         // any valid CSS color: "#fff", "rgba(...)", "red"
+  width?: number;
+  color?: string;
   style?: 'solid' | 'dashed' | 'dotted' | 'double' | 'none';
 };
-
 
 type ImageBlock = {
   id: string;
@@ -67,47 +64,33 @@ type TemplatePage = {
 };
 
 export default function CreateMagazinePage() {
-   
-
   const { templateId } = useParams();
   const navigate = useNavigate();
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
   const perSlotFileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // kept names..
   const [template, setTemplate] = useState<any | undefined>(() => undefined);
   const [title, setTitle] = useState('');
-  const [photos, setPhotos] = useState<string[]>([]); // object URLs for previews (bulk)
-  const filesRef = useRef<File[]>([]); // raw files for bulk upload
+  const [photos, setPhotos] = useState<string[]>([]);
+  const filesRef = useRef<File[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadingTemplate, setLoadingTemplate] = useState(true);
   const [isSignedIn, setIsSignedIn] = useState(false);
 
-
-  // new states for template pages and per-page user content
   const [templatePages, setTemplatePages] = useState<TemplatePage[]>([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const pageNumbers = templatePages.map((pg) => pg.page_number);
 
+  const templatePay = template;
+
+  const { hasTemplateAccess, loading, openPaywall } = useTemplateAccess(templatePay);
+
+  const [userImages, setUserImages] = useState<Record<number, Record<string, string>>>({});
+  const [userTexts, setUserTexts] = useState<Record<number, Record<string, string>>>({});
   const [bulkTextValues, setBulkTextValues] = useState<Record<string, string>>({});
 
-  const templatePay = template
-
-  const { hasTemplateAccess, loading, openPaywall } =
-    useTemplateAccess(templatePay)
-
-
-
-  // userImages: map page_number -> (slotId -> url)
-  const [userImages, setUserImages] = useState<Record<number, Record<string, string>>>({});
-
-  // userTexts: map page_number -> (textId -> text)
-  const [userTexts, setUserTexts] = useState<Record<number, Record<string, string>>>({});
-
-  // for per-slot upload targeting
   const currentSlotTargetRef = useRef<{ pageNumber: number; slotId: string } | null>(null);
 
-  // preview scale (renders pages smaller in the carousel)
   const PREVIEW_SCALE = 0.3;
   const PAGE_WIDTH = 1000;
   const PAGE_HEIGHT = 1415;
@@ -118,13 +101,11 @@ export default function CreateMagazinePage() {
     const fetchTemplateAndPages = async () => {
       setLoadingTemplate(true);
 
-      // fetch template metadata
       const { data: tmpl, error: tErr } = await supabase
         .from('templates')
         .select('*')
         .eq('id', templateId)
         .single();
-
 
       if (tErr || !tmpl) {
         console.error('Error fetching template:', tErr);
@@ -133,7 +114,6 @@ export default function CreateMagazinePage() {
         return;
       }
 
-      // fetch template_pages ordered by page_number..
       const { data: pages, error: pErr } = await supabase
         .from('template_pages')
         .select('*')
@@ -149,7 +129,6 @@ export default function CreateMagazinePage() {
 
       if (!mounted) return;
 
-      // initialize userTexts with defaults from layout_json
       const initialTexts: Record<number, Record<string, string>> = {};
       const initialImages: Record<number, Record<string, string>> = {};
 
@@ -160,23 +139,12 @@ export default function CreateMagazinePage() {
 
         const layout = pg.layout_json ?? {};
         (layout.textBlocks ?? []).forEach((tb: TextBlock) => {
-          initialTexts[pn][tb.id] = tb.defaultText ?? '';
+          const bulkValue = bulkTextValues[tb.id];
+          initialTexts[pn][tb.id] = bulkValue ?? tb.defaultText ?? '';
         });
         (layout.imageBlocks ?? []).forEach((ib: ImageBlock) => {
-          // note: defaultImageUrl is not stored in userImages; userImages only contains user-supplied urls
-          initialImages[pn][ib.id] = ''; // empty until user uploads or bulk assign
+          initialImages[pn][ib.id] = '';
         });
-
-        // In fetchTemplateAndPages, after initializing initialTexts
-
-        Object.entries(bulkTextValues).forEach(([id, value]) => {
-          templatePages.forEach(pg => {
-            const pn = pg.page_number;
-            initialTexts[pn][id] = value;
-          });
-        });
-
-
       });
 
       setTemplate(tmpl);
@@ -191,7 +159,7 @@ export default function CreateMagazinePage() {
     return () => {
       mounted = false;
     };
-  }, [templateId]);
+  }, [templateId, bulkTextValues]);
 
   useEffect(() => {
     if (templatePages.length === 0) return;
@@ -200,7 +168,6 @@ export default function CreateMagazinePage() {
       const allowed = await getAllowedFontsCached();
       const allowedSet = new Set(allowed.map((f) => f.toLowerCase()));
 
-      // Collect fonts used by this template’s text blocks
       const fontsUsed = new Set<string>();
       templatePages.forEach((pg) => {
         (pg.layout_json?.textBlocks ?? []).forEach((tb: any) => {
@@ -230,7 +197,6 @@ export default function CreateMagazinePage() {
     };
   }, []);
 
-
   if (loadingTemplate) {
     return (
       <div className="container mx-auto px-4 py-12 text-center">
@@ -250,16 +216,11 @@ export default function CreateMagazinePage() {
     );
   }
 
-  // Build background url for a page using your naming scheme::
-  // template_pages/{Template_name}/{Page_index}.png
   const buildTemplatePageUrl = (templateSlug: string, pageIndex: number) => {
     const origin = `https://${(import.meta.env.VITE_SUPABASE_URL as string).replace(/^https?:\/\//, '')}`;
     return `${origin}/storage/v1/object/public/template_pages/${templateSlug}/${pageIndex}.png`;
   };
 
- 
-
-  // Bulk file select (unchanged UI)
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!hasTemplateAccess) {
       openPaywall();
@@ -274,11 +235,10 @@ export default function CreateMagazinePage() {
       if (file.type.startsWith('image/')) {
         const url = URL.createObjectURL(file);
         newPhotos.push(url);
-        filesRef.current.push(file); // store file for upload later
+        filesRef.current.push(file);
       }
     });
 
-    // Do not exceed reasonable amount: template.required_photos + 50 (buffer)
     if (photos.length + newPhotos.length > (template.required_photos ?? 0) + 50) {
       toast.error(`Maximum ${(template.required_photos ?? 0) + 50} photos allowed`);
       newPhotos.forEach((u) => URL.revokeObjectURL(u));
@@ -293,17 +253,14 @@ export default function CreateMagazinePage() {
     const newPhotos = [...photos];
     URL.revokeObjectURL(newPhotos[index]);
     newPhotos.splice(index, 1);
-    // remove matching file (we assume same index maps; safe enough for bulk)
     if (filesRef.current[index]) filesRef.current.splice(index, 1);
     setPhotos(newPhotos);
   };
 
-  // Auto-assign uploaded images to template placeholders (sequential) BUT skip non-editable slots
   const applyNextImageToTemplate = (imageUrl: string) => {
     setUserImages((prev) => {
       const next = structuredClone(prev);
 
-      // Flatten all editable slots across all pages
       const allSlots: { pageNumber: number; slotId: string }[] = [];
       for (const pg of templatePages) {
         const layout = pg.layout_json;
@@ -315,13 +272,11 @@ export default function CreateMagazinePage() {
         }
       }
 
-      // Flatten all uploaded images (in order)
       const allImageUrls = photos;
 
-      // Cycle through slots and assign images in order, repeating if needed
       for (let i = 0; i < allSlots.length; i++) {
         const slot = allSlots[i];
-        const imageUrl = allImageUrls[i % allImageUrls.length]; // repeat if not enough images
+        const imageUrl = allImageUrls[i % allImageUrls.length];
 
         next[slot.pageNumber] ??= {};
         next[slot.pageNumber][slot.slotId] = imageUrl;
@@ -331,9 +286,6 @@ export default function CreateMagazinePage() {
     });
   };
 
-
-
-  // Upload all bulk files to storage and apply to placeholders
   const handleUploadAll = async () => {
     if (filesRef.current.length === 0) {
       toast.error('No photos selected to upload');
@@ -342,10 +294,7 @@ export default function CreateMagazinePage() {
 
     setIsGenerating(true);
     try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
 
       if (userError || !user) {
         toast.error('You must be signed in to upload images');
@@ -354,51 +303,33 @@ export default function CreateMagazinePage() {
         return;
       }
 
-      const toastId = toast.loading(
-        `Uploading images… 0 of ${filesRef.current.length}`,
-        { position: 'top-left' }
-      );
+      const toastId = toast.loading(`Uploading images… 0 of ${filesRef.current.length}`, { position: 'top-left' });
 
       let uploadedCount = 0;
 
       for (let i = 0; i < filesRef.current.length; i++) {
         const file = filesRef.current[i];
-
         const filePath = `${user.id}/${Date.now()}_${file.name}`;
-        const { data, error } = await supabase.storage
-          .from('magazine-assets')
-          .upload(filePath, file, { cacheControl: '3600', upsert: false });
+        const { data, error } = await supabase.storage.from('magazine-assets').upload(filePath, file, { cacheControl: '3600', upsert: false });
 
         if (error) {
           console.error(error);
           continue;
         }
 
-        const publicUrl =
-          supabase.storage
-            .from('magazine-assets')
-            .getPublicUrl(data.path).data.publicUrl;
+        const publicUrl = supabase.storage.from('magazine-assets').getPublicUrl(data.path).data.publicUrl;
 
-        // ✅ APPLY IMMEDIATELY
         applyNextImageToTemplate(publicUrl);
 
         uploadedCount++;
 
-        // ✅ UPDATE TOAST
-        toast.loading(
-          `Uploading images… ${uploadedCount} of ${filesRef.current.length} uploaded`,
-          { id: toastId }
-        );
+        toast.loading(`Uploading images… ${uploadedCount} of ${filesRef.current.length} uploaded`, { id: toastId });
       }
 
-      toast.success(
-        `Images uploaded successfully (${uploadedCount}/${filesRef.current.length})`,
-        { id: toastId }
-      );
+      toast.success(`Images uploaded successfully (${uploadedCount}/${filesRef.current.length})`, { id: toastId });
 
       filesRef.current = [];
       setPhotos([]);
-
 
     } catch (err) {
       console.error(err);
@@ -408,7 +339,6 @@ export default function CreateMagazinePage() {
     }
   };
 
-  // When editing inline text, update userTexts
   const handleTextChange = (pageNumber: number, textId: string, value: string) => {
     setUserTexts((prev) => {
       const copy = { ...prev };
@@ -418,7 +348,6 @@ export default function CreateMagazinePage() {
     });
   };
 
-  // Open file picker to replace a single slot (set target then click hidden input)
   const handleReplaceSlotClick = (pageNumber: number, slotId: string) => {
     if (!isSignedIn) {
       toast.error('Sign in required');
@@ -439,15 +368,12 @@ export default function CreateMagazinePage() {
     if (perSlotFileInputRef.current) perSlotFileInputRef.current.click();
   };
 
-
-  // Handle single-slot file selection
   const handlePerSlotFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || !currentSlotTargetRef.current) return;
     const file = files[0];
     if (!file.type.startsWith('image/')) return;
 
-    // double-check target is editable before uploading
     const target = currentSlotTargetRef.current;
     const pg = templatePages.find((p) => p.page_number === target.pageNumber);
     const ib = pg?.layout_json?.imageBlocks?.find((b: ImageBlock) => b.id === target.slotId);
@@ -459,13 +385,9 @@ export default function CreateMagazinePage() {
 
     const toastId = toast.loading('Uploading image…', { position: 'top-left' });
 
-
     setIsGenerating(true);
     try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
 
       if (userError || !user) {
         toast.error('Sign in required', { id: toastId });
@@ -474,9 +396,7 @@ export default function CreateMagazinePage() {
       }
 
       const filePath = `${user.id}/${Date.now()}_${file.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('magazine-assets')
-        .upload(filePath, file, { cacheControl: '3600', upsert: false });
+      const { data: uploadData, error: uploadError } = await supabase.storage.from('magazine-assets').upload(filePath, file, { cacheControl: '3600', upsert: false });
 
       if (uploadError) {
         console.error('Upload error:', uploadError);
@@ -485,9 +405,7 @@ export default function CreateMagazinePage() {
         return;
       }
 
-      const url =
-        supabase.storage.from('magazine-assets').getPublicUrl(uploadData.path).data?.publicUrl ??
-        (uploadData?.publicUrl ?? '');
+      const url = supabase.storage.from('magazine-assets').getPublicUrl(uploadData.path).data?.publicUrl ?? (uploadData?.publicUrl ?? '');
 
       setUserImages((prev) => {
         const copy = { ...prev };
@@ -507,7 +425,6 @@ export default function CreateMagazinePage() {
     }
   };
 
-  // Generate/save: create magazines row, then magazine_pages rows with user_images & user_texts
   const handleGenerate = async () => {
     if (!title.trim()) {
       toast.error('Please enter a magazine title');
@@ -517,11 +434,7 @@ export default function CreateMagazinePage() {
     setIsGenerating(true);
 
     try {
-      // get current user
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
 
       if (userError || !user) {
         toast.error('You must be signed in to generate a magazine');
@@ -530,22 +443,17 @@ export default function CreateMagazinePage() {
         return;
       }
 
-      // create magazines row
-      const { data: magData, error: magError } = await supabase
-        .from('magazines')
-        .insert([
-          {
-            owner: user.id,
-            title: title,
-            description: template.description ?? null,
-            template_id: template.id,
-            thumbnail_url: template.thumbnail_url ?? null,
-            metadata: JSON.stringify({ createdFromTemplate: template.id }),
-            is_published: false,
-          },
-        ])
-        .select()
-        .single();
+      const { data: magData, error: magError } = await supabase.from('magazines').insert([
+        {
+          owner: user.id,
+          title: title,
+          description: template.description ?? null,
+          template_id: template.id,
+          thumbnail_url: template.thumbnail_url ?? null,
+          metadata: JSON.stringify({ createdFromTemplate: template.id }),
+          is_published: false,
+        },
+      ]).select().single();
 
       if (magError || !magData) {
         console.error('Error creating magazine:', magError);
@@ -554,7 +462,6 @@ export default function CreateMagazinePage() {
         return;
       }
 
-      // build inserts for magazine_pages based on templatePages order
       const pageInserts = templatePages.map((pg) => {
         const pn = pg.page_number;
         const pageUserImages = userImages[pn] ?? {};
@@ -589,12 +496,9 @@ export default function CreateMagazinePage() {
 
   const progress = Math.min((photos.length / (template.required_photos ?? 1)) * 100, 100);
 
-  // Carousel navigation helpers
   const goPrev = () => setCurrentPageIndex((i) => Math.max(0, i - 1));
   const goNext = () => setCurrentPageIndex((i) => Math.min(templatePages.length - 1, i + 1));
 
-  // Export pages to PDF (uses html2canvas + jspdf)
-  // Requires: npm i html2canvas jspdf
   const handleExportPDF = async () => {
     if (templatePages.length === 0) {
       toast.error('No pages to export');
@@ -610,7 +514,7 @@ export default function CreateMagazinePage() {
 
       const PAGE_WIDTH = 1000;
       const PAGE_HEIGHT = 1415;
-      const SCALE = 1; // keep same as your current behavior
+      const SCALE = 1;
 
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -623,14 +527,10 @@ export default function CreateMagazinePage() {
         const pg = templatePages[i];
         const original = document.getElementById(`page-${pg.page_number}`);
 
-
         if (!original) continue;
 
-        // Clone node to avoid scaling issues
         const clone = original.cloneNode(true) as HTMLElement;
 
-        // ✅ Workaround: html2canvas may ignore object-fit on <img>.
-        // Convert each image-slot <img> into a background-image on the slot container for export.
         clone.querySelectorAll('[data-image-slot="true"]').forEach((slotEl) => {
           const slot = slotEl as HTMLElement;
           const img = slot.querySelector('img') as HTMLImageElement | null;
@@ -640,8 +540,6 @@ export default function CreateMagazinePage() {
           slot.style.backgroundSize = 'cover';
           slot.style.backgroundPosition = 'center';
           slot.style.backgroundRepeat = 'no-repeat';
-
-          // Hide img in export clone to prevent stretching
           img.style.display = 'none';
         });
 
@@ -652,10 +550,8 @@ export default function CreateMagazinePage() {
         clone.style.left = '-99999px';
         clone.style.top = '0';
 
-        // Remove UI-only elements (buttons, icons, etc.)
         clone.querySelectorAll('[data-ui="true"]').forEach((el) => el.remove());
 
-        // Prevent html2canvas text baseline/linebox differences from clipping descenders
         clone.querySelectorAll('[data-text-block="true"]').forEach((el) => {
           const t = el as HTMLElement;
           t.style.overflow = "visible";
@@ -682,13 +578,8 @@ export default function CreateMagazinePage() {
         pdf.addImage(imgData, 'JPEG', 0, 0, PAGE_WIDTH, PAGE_HEIGHT, undefined, 'FAST');
       }
 
-      // ✅ Build filename from authenticated user + template
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
+      const { data: { user } } = await supabase.auth.getUser();
       const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'user';
-
       const safe = (s: string) => s.replace(/[^a-z0-9]/gi, '_').toLowerCase();
 
       pdf.save(`${safe(userName)}_${safe(template.name)}_magazine.pdf`);
@@ -706,8 +597,7 @@ export default function CreateMagazinePage() {
         });
       } catch (e) {
         console.error('Export logging failed', e);
-      }  
-
+      }
 
       toast.success('Magazine exported successfully');
     } catch (err) {
@@ -720,68 +610,58 @@ export default function CreateMagazinePage() {
 
   const handleExportVideo = async () => {
     if (templatePages.length === 0) {
-      toast.error('No pages to export')
-      return
+      toast.error('No pages to export');
+      return;
     }
 
-    setIsGenerating(true)
+    setIsGenerating(true);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
-        toast.error('Sign in required')
-        return
+        toast.error('Sign in required');
+        return;
       }
 
       const pageUrls = templatePages.map(
         (pg) =>
-          document
-            .getElementById(`page-${pg.page_number}`)
-            ?.querySelector('img')?.src ||
+          document.getElementById(`page-${pg.page_number}`)?.querySelector('img')?.src ||
           buildTemplatePageUrl(template.slug, pg.page_number)
-      )
+      );
 
       const res = await fetch('/api/export-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           pages: pageUrls,
-          userName:
-            user.user_metadata?.full_name ||
-            user.email?.split('@')[0] ||
-            'user',
+          userName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'user',
           templateName: template.name,
           userId: user.id,
           templateId: template.id,
         }),
-      })
+      });
 
-      const data = await res.json()
+      const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error)
+      if (!res.ok) throw new Error(data.error);
 
-      // trigger download
-      const a = document.createElement('a')
-      a.href = data.url
-      a.download = ''
-      a.click()
+      const a = document.createElement('a');
+      a.href = data.url;
+      a.download = '';
+      a.click();
 
-      toast.success('Video exported successfully')
+      toast.success('Video exported successfully');
     } catch (err) {
-      console.error(err)
-      toast.error('Failed to export video')
+      console.error(err);
+      toast.error('Failed to export video');
     } finally {
-      setIsGenerating(false)
+      setIsGenerating(false);
     }
-  }
-
+  };
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
-      {/* Back Button.. */}
       <button
         onClick={() => navigate('/templates')}
         className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
@@ -790,15 +670,10 @@ export default function CreateMagazinePage() {
         Back to Templates
       </button>
 
-      {/* Header */}
       <div className="mb-6 animate-fade-in">
         <h1 className="text-editorial-md mb-2">Create Your {template.name} Magazine</h1>
-        
-        <p className="text-muted-foreground">
-          {template.description}
-        </p>
-
-        <div className= "mt-3">
+        <p className="text-muted-foreground">{template.description}</p>
+        <div className="mt-3">
           <p className="text-muted-foreground font-semibold">
             {template.pageCount} pages • {template.requiredPhotos} photos required
           </p>
@@ -821,8 +696,6 @@ export default function CreateMagazinePage() {
         </Card>
       )}
 
-
-      {/* Template Pages Carousel... */}
       <div className="mb-6 relative">
         <div className="flex items-center justify-between mb-3">
           <div className="text-sm text-muted-foreground">Preview pages (click to edit)</div>
@@ -865,25 +738,21 @@ export default function CreateMagazinePage() {
                       transformOrigin: 'top left',
                     }}
                   >
-                    {/* Render image placeholders.. */}
                     {(layout.imageBlocks ?? []).map((ib: ImageBlock) => {
                       const slotUrl = (userImages[pg.page_number] || {})[ib.id] || ib.defaultImageUrl || '';
-                      
                       const bw = ib.border?.width;
                       const bc = ib.border?.color;
                       const bs = ib.border?.style ?? 'solid';
                       const isEditable = ib.editable !== false;
 
                       return (
-
-
                         <div
                           key={ib.id}
                           data-image-slot="true"
                           className={cn(
                             'absolute overflow-hidden rounded-sm flex items-center justify-center',
                             !slotUrl && isEditable && 'bg-gray-100/30',
-                            !isEditable && 'pointer-events-none' // ✅ allow click-through
+                            !isEditable && 'pointer-events-none'
                           )}
                           style={{
                             left: ib.x,
@@ -894,17 +763,13 @@ export default function CreateMagazinePage() {
                             borderRadius: ib.borderRadius ? `${ib.borderRadius}px` : undefined,
                             transform: `rotate(${ib.rotate ?? 0}deg)`,
                             border: bw && bc ? `${bw}px ${bs} ${bc}` : undefined,
-                            // ✅ hard-enforce click-through for locked/uneditable slots
                             pointerEvents: isEditable ? 'auto' : 'none',
-
                           }}
                           onClick={() => {
                             if (!isEditable) return;
                             handleReplaceSlotClick(pg.page_number, ib.id);
                           }}
                         >
-
-
                           {slotUrl ? (
                             <img
                               src={slotUrl}
@@ -915,21 +780,17 @@ export default function CreateMagazinePage() {
                                 objectFit: 'cover',
                                 objectPosition: 'center',
                                 borderRadius: ib.borderRadius ? `${ib.borderRadius}px` : undefined,
-                                // ✅ also ensure the image itself can’t intercept clicks
                                 pointerEvents: isEditable ? 'auto' : 'none',
                               }}
                             />
                           ) : (
-                            <div className="text-xs text-muted-foreground text-center p-2"
-                                style={{
-                                  // ✅ ensure placeholder text can’t intercept clicks either
-                                   pointerEvents: isEditable ? 'auto' : 'none',
-                                }}
+                            <div
+                              className="text-xs text-muted-foreground text-center p-2"
+                              style={{ pointerEvents: isEditable ? 'auto' : 'none' }}
                             >
                               {ib.editable === false ? 'Locked image' : 'Click to add image'}
                             </div>
                           )}
-
                           {isEditable && (
                             <button
                               data-ui="true"
@@ -939,8 +800,7 @@ export default function CreateMagazinePage() {
                               }}
                               className="absolute right-1 top-1 w-7 h-7 rounded-full bg-foreground/80 text-background flex items-center justify-center opacity-90"
                               title="Replace image"
-                              style={{ pointerEvents: 'auto' }} // keep clickable
-
+                              style={{ pointerEvents: 'auto' }}
                             >
                               <Image className="h-4 w-4" />
                             </button>
@@ -949,7 +809,6 @@ export default function CreateMagazinePage() {
                       );
                     })}
 
-                    {/* Render text placeholders (inline editable) */}
                     {(layout.textBlocks ?? []).map((tb: TextBlock) => {
                       const currentText = (userTexts[pg.page_number] || {})[tb.id] ?? tb.defaultText ?? '';
                       const isEditable = tb.editable !== false;
@@ -981,8 +840,6 @@ export default function CreateMagazinePage() {
                             fontWeight: tb.fontWeight ?? undefined,
                             fontFamily: tb.fontFamily ?? 'inherit',
                             whiteSpace: 'pre-wrap',
-
-
                           }}
                           onClick={(e) => {
                             if (tb.editable === false) {
@@ -996,16 +853,12 @@ export default function CreateMagazinePage() {
                       );
                     })}
                   </div>
-
                 </div>
               );
             })}
           </div>
         </div>
       </div>
-
-      {/* Details + Bulk Upload */}
-    
 
       <Card className="mb-6">
         <div className="p-6">
@@ -1017,43 +870,40 @@ export default function CreateMagazinePage() {
               placeholder="e.g., Summer Memories 2025"
               className="max-w-md"
             />
+          </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">Bulk Text Edit</label>
-              {(() => {
-                // Group text blocks by id
-                const groupedBlocks = templatePages.reduce((acc, pg) => {
-                  (pg.layout_json?.textBlocks ?? []).forEach(tb => {
-                    if (tb.id) {
-                      acc[tb.id] = acc[tb.id] || [];
-                      acc[tb.id].push(tb);
-                    }
-                  });
-                  return acc;
-                }, {} as Record<string, TextBlock[]>);
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Bulk Text Edit</label>
+            {(() => {
+              const groupedBlocks = templatePages.reduce((acc, pg) => {
+                (pg.layout_json?.textBlocks ?? []).forEach(tb => {
+                  if (tb.id) {
+                    acc[tb.id] = acc[tb.id] || [];
+                    acc[tb.id].push(tb);
+                  }
+                });
+                return acc;
+              }, {} as Record<string, TextBlock[]>);
 
-                return Object.entries(groupedBlocks).map(([id, blocks]) => (
-                  <BulkTextEdit
-                    key={id}
-                    textId={id}
-                    onBulkEdit={(id, value) => {
-                      setBulkTextValues(prev => ({ ...prev, [id]: value }));
-                      // Update userTexts for all pages
-                      setUserTexts(prev => {
-                        const next = { ...prev };
-                        templatePages.forEach(pg => {
-                          const pn = pg.page_number;
-                          next[pn] = { ...(next[pn] || {}) };
-                          next[pn][id] = value;
-                        });
-                        return next;
+              return Object.entries(groupedBlocks).map(([id, blocks]) => (
+                <BulkTextEdit
+                  key={id}
+                  textId={id}
+                  onBulkEdit={(id, value) => {
+                    setBulkTextValues(prev => ({ ...prev, [id]: value }));
+                    setUserTexts(prev => {
+                      const next = { ...prev };
+                      templatePages.forEach(pg => {
+                        const pn = pg.page_number;
+                        next[pn] = { ...(next[pn] || {}) };
+                        next[pn][id] = value;
                       });
-                    }}
-                  />
-                ));
-              })()}
-            </div>
-
+                      return next;
+                    });
+                  }}
+                />
+              ));
+            })()}
           </div>
 
           <div className="mb-4">
@@ -1062,7 +912,6 @@ export default function CreateMagazinePage() {
               Upload all your photos and we will apply them to the template automatically. You can adjust each page
               afterwards.
             </p>
-
             <input
               ref={bulkFileInputRef}
               type="file"
@@ -1071,7 +920,6 @@ export default function CreateMagazinePage() {
               onChange={handleFileSelect}
               className="hidden"
             />
-
             <div
               onClick={() => {
                 if (!isSignedIn) {
@@ -1086,14 +934,12 @@ export default function CreateMagazinePage() {
                 photos.length === 0 ? 'border-border' : 'border-gold/30'
               )}
             >
-
               <div className="flex flex-col items-center gap-2">
                 <Upload className="h-6 w-6 text-muted-foreground" />
                 <p className="font-medium">Click to upload photos</p>
                 <p className="text-sm text-muted-foreground">{photos.length} selected</p>
               </div>
             </div>
-
             {photos.length > 0 && (
               <div className="grid grid-cols-4 gap-3 mt-4">
                 {photos.map((p, i) => (
@@ -1109,7 +955,6 @@ export default function CreateMagazinePage() {
                 ))}
               </div>
             )}
-
             <div className="flex gap-3 mt-4">
               <Button
                 variant="outline"
@@ -1128,10 +973,6 @@ export default function CreateMagazinePage() {
         </div>
       </Card>
 
-    
- 
-
-      {/* Hidden per-slot file input... */}
       <input
         ref={(el) => (perSlotFileInputRef.current = el)}
         type="file"
@@ -1140,17 +981,12 @@ export default function CreateMagazinePage() {
         onChange={handlePerSlotFileSelect}
       />
 
-      {/* Save / Generate */}
       <div className="flex flex-wrap justify-end gap-3 mt-4">
-        
-          
         <PageDownloadDialog
           pageNumbers={pageNumbers}
           templateId={template.id}
           templateName={template.name}
         />
-
-
         <Button
           variant="outline"
           size="sm"
@@ -1161,7 +997,6 @@ export default function CreateMagazinePage() {
           Export PDF
         </Button>
       </div>
-
     </div>
   );
 }
