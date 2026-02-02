@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Button, Input } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input'; // Correct import
 import { Label } from '@/components/ui/label';
 
 interface BulkTextEditProps {
