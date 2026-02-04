@@ -834,12 +834,13 @@ export default function CreateMagazinePage() {
                             textAlign: tb.align as any,
                             lineHeight: tb.lineHeight ? `${tb.lineHeight}px` : undefined,
                             letterSpacing: tb.letterSpacing ? `${tb.letterSpacing}px` : undefined,
-                            overflow: 'hidden',
+                            overflow: 'visible',
                             zIndex: tb.zIndex ?? 2,
                             transform: `rotate(${tb.rotate ?? 0}deg)`,
                             fontWeight: tb.fontWeight ?? undefined,
                             fontFamily: tb.fontFamily ?? 'inherit',
                             whiteSpace: 'pre-wrap',
+                            verticalAlign: 'top',
                           }}
                           onClick={(e) => {
                             if (tb.editable === false) {
