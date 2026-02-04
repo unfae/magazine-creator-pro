@@ -967,11 +967,18 @@ export default function CreateMagazinePage() {
 
               // Very first, just after `pageNumbers` and before `const textIds`
               const textBlocksFromLayout = Array.isArray(templatePages)
-                ? templatePages.flatMap(pg =>
-                    (pg.layout_json?.textBlocks ?? []).map(tb => ({
-                      id: tb.id,
-                      defaultText: tb.defaultText ?? tb.id, // this is what appears in (e.g., ...)
-                    }))
+                ? Array.from(
+                    new Map(
+                      templatePages.flatMap(pg =>
+                        (pg.layout_json?.textBlocks ?? []).map(tb => [
+                          tb.id,
+                          {
+                            id: tb.id,
+                            defaultText: tb.defaultText ?? tb.id,
+                          },
+                        ])
+                      )
+                    ).values()
                   )
                 : [];
 
