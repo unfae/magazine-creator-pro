@@ -965,9 +965,21 @@ export default function CreateMagazinePage() {
                 (pg.layout_json?.textBlocks ?? []).map(tb => tb.id)
               ))];
 
+              // Very first, just after `pageNumbers` and before `const textIds`
+              const textBlocksFromLayout = Array.isArray(templatePages)
+                ? templatePages.flatMap(pg =>
+                    (pg.layout_json?.textBlocks ?? []).map(tb => ({
+                      id: tb.id,
+                      defaultText: tb.defaultText ?? tb.id, // this is what appears in (e.g., ...)
+                    }))
+                  )
+                : [];
+
+
               return (
                 <BulkTextEdit
                   textIds={textIds}
+                  textBlocks={textBlocksFromLayout} 
                   onBulkEdit={(values) => {
                     setBulkTextValues(prev => ({ ...prev, ...values }));
                     setUserTexts(prev => {
