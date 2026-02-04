@@ -15,14 +15,13 @@ interface BulkTextEditProps {
 }
 
 export function BulkTextEdit({ textIds, textBlocks, onBulkEdit }: BulkTextEditProps) {
-  // Prefer textBlocks if given, else build from textIds
   const safeTextBlocks =
     Array.isArray(textBlocks) && textBlocks.length > 0
       ? textBlocks
       : Array.isArray(textIds)
       ? textIds.map(id => ({
           id,
-          defaultText: id,
+          defaultText: id, // fallback
         }))
       : [];
 
@@ -47,30 +46,35 @@ export function BulkTextEdit({ textIds, textBlocks, onBulkEdit }: BulkTextEditPr
       </p>
 
       <div className="relative">
-        {/* Scrollable container */}
         <div
           className="grid grid-cols-1 md:grid-cols-3 gap-2 max-h-44 overflow-y-auto pr-4"
           style={{
-            // Make sure scrollbar is always visible (not hidden by OS)
             scrollbarWidth: 'thin',
-            scrollbarColor: 'hsl(var(--muted-foreground) / 0.4) transparent',
+            scrollbarColor: 'hsl(var(--primary)) hsl(var(--muted))',
           }}
         >
-          {safeTextBlocks.map((tb, i) => (
-            <div key={tb.id} className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground w-6 text-right select-none">
-                {i + 1}
-              </span>
-              <div className="flex-1">
-                <Input
-                  value={values[tb.id] || ''}
-                  onChange={e => handleChange(tb.id, e.target.value)}
-                  placeholder={`Enter your ${tb.id} (e.g., ${tb.defaultText || tb.id})`}
-                  className="w-full"
-                />
+          {safeTextBlocks.map((tb, i) => {
+            const hasDefaultText = tb.defaultText && tb.defaultText !== tb.id;
+            const placeholder = hasDefaultText
+              ? `Enter your ${tb.id} (e.g., ${tb.defaultText})`
+              : `Enter your ${tb.id}`;
+
+            return (
+              <div key={tb.id} className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground w-6 text-right select-none">
+                  {i + 1}
+                </span>
+                <div className="flex-1">
+                  <Input
+                    value={values[tb.id] || ''}
+                    onChange={e => handleChange(tb.id, e.target.value)}
+                    placeholder={placeholder}
+                    className="w-full"
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
