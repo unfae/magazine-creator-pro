@@ -12,6 +12,7 @@ import { logTemplateExport } from '@/lib/exportLog';
 import { PageDownloadDialog } from '@/components/PageDownloadDialog';
 import { getAllowedFontsCached, ensureGoogleFontsLoaded } from '@/lib/fontLoader';
 import { BulkTextEdit } from '@/components/BulkTextEdit';
+import { scheduleExportAssetsForDeletion } from '@/lib/scheduleExportAssetsForDeletion';
 
 type TextBlock = {
   id: string;
@@ -598,6 +599,8 @@ export default function CreateMagazinePage() {
       } catch (e) {
         console.error('Export logging failed', e);
       }
+
+      await scheduleExportAssetsForDeletion(user.id, template.id);
 
       toast.success('Magazine exported successfully');
     } catch (err) {
