@@ -549,7 +549,6 @@ export default function CreateMagazinePage() {
         clone.style.position = 'absolute';
         clone.style.left = '-99999px';
         clone.style.top = '0';
-        clone.style.transform = 'none';
 
         clone.querySelectorAll('[data-ui="true"]').forEach((el) => el.remove());
 
@@ -568,7 +567,6 @@ export default function CreateMagazinePage() {
           useCORS: true,
           backgroundColor: null,
           imageTimeout: 30000,
-          foreignObjectRendering: true,
         });
 
         document.body.removeChild(clone);
