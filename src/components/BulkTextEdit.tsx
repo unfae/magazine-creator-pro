@@ -41,13 +41,13 @@ export function BulkTextEdit({ textIds, textBlocks, onBulkEdit }: BulkTextEditPr
       <p className="text-sm text-muted-foreground mb-1">
         Enter your details here once to apply in all places and manually edit if needed.
       </p>
-      <p className="text-xs text-muted-foreground mb-2">
+      <p className="text-sm text-muted-foreground mb-2">
         You can scroll within this container to see all fields.
       </p>
 
       <div className="relative">
         <div
-          className="grid grid-cols-1 md:grid-cols-3 gap-2 max-h-44 overflow-y-auto pr-4"
+          className="grid grid-cols-1 md:grid-cols-3 gap-2 max-h-42 overflow-y-auto pr-4"
           style={{
             scrollbarWidth: 'thin',
             scrollbarColor: 'hsl(var(--primary)) hsl(var(--muted))',
