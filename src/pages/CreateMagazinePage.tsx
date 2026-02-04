@@ -23,7 +23,7 @@ type TextBlock = {
   fontSize?: number;
   fontFamily?: string;
   fontWeight?: number | string;
-  lineHeight?: string;
+  lineHeight?: number;
   letterSpacing?: number;
   color?: string;
   align?: string;
@@ -833,7 +833,7 @@ export default function CreateMagazinePage() {
                             fontSize: (tb.fontSize ?? 16) as number,
                             color: tb.color ?? 'inherit',
                             textAlign: tb.align as any,
-                            lineHeight: tb.lineHeight ?? undefined,
+                            lineHeight: tb.lineHeight ? `${tb.lineHeight}px` : undefined,
                             letterSpacing: tb.letterSpacing ? `${tb.letterSpacing}px` : undefined,
                             overflow: 'visible',
                             zIndex: tb.zIndex ?? 2,

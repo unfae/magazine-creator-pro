@@ -3,8 +3,8 @@
 
 @layer base {
   img {
-    @apply inline-block;
-    vertical-align: baseline;
+    display: inline-block;
+    vertical-align: middle;
   }
 }
 
