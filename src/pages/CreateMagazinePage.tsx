@@ -678,6 +678,21 @@ export default function CreateMagazinePage() {
             {template.pageCount} pages • {template.requiredPhotos} photos required
           </p>
         </div>
+
+        {template.cta_link_url ? (
+          <div className="mt-4 text-sm">
+            <a
+              href={template.cta_link_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {template.cta_link_text}
+              <ArrowLeft className="h-3 w-3 -rotate-45 ml-1" />
+            </a>
+          </div>
+        ) : null}
+
       </div>
 
       {template?.price > 0 && !hasTemplateAccess && !loading && (
