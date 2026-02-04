@@ -47,7 +47,7 @@ export function BulkTextEdit({ textIds, textBlocks, onBulkEdit }: BulkTextEditPr
 
       <div className="relative">
         <div
-          className="grid grid-cols-1 md:grid-cols-3 gap-2 max-h-36 overflow-y-auto pr-4"
+          className="grid grid-cols-1 md:grid-cols-3 gap-2 max-h-40 overflow-y-auto pr-4"
           style={{
             scrollbarWidth: 'thin',
             scrollbarColor: 'hsl(var(--primary)) hsl(var(--muted))',
