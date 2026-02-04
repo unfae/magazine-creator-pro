@@ -680,18 +680,19 @@ export default function CreateMagazinePage() {
         </div>
 
         {template.cta_link_url ? (
-          <div className="mt-4 text-sm">
+          <div className="mt-4">
             <a
               href={template.cta_link_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex items-center gap-1 text-primary text-base font-medium hover:underline"
             >
               {template.cta_link_text}
-              <ArrowLeft className="h-3 w-3 -rotate-45 ml-1" />
+              <ChevronRight className="h-4 w-4" />
             </a>
           </div>
         ) : null}
+
 
       </div>
 
