@@ -841,7 +841,7 @@ export default function CreateMagazinePage() {
                             fontWeight: tb.fontWeight ?? undefined,
                             fontFamily: tb.fontFamily ?? 'inherit',
                             whiteSpace: 'pre-wrap',
-                            verticalAlign: 'top',
+                            //verticalAlign: 'top',
                           }}
                           onClick={(e) => {
                             if (tb.editable === false) {
