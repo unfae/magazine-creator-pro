@@ -23,7 +23,7 @@ type TextBlock = {
   fontSize?: number;
   fontFamily?: string;
   fontWeight?: number | string;
-  lineHeight?: number;
+  lineHeight?: string;
   letterSpacing?: number;
   color?: string;
   align?: string;
@@ -549,6 +549,7 @@ export default function CreateMagazinePage() {
         clone.style.position = 'absolute';
         clone.style.left = '-99999px';
         clone.style.top = '0';
+        clone.style.transform = 'none';
 
         clone.querySelectorAll('[data-ui="true"]').forEach((el) => el.remove());
 
@@ -567,6 +568,7 @@ export default function CreateMagazinePage() {
           useCORS: true,
           backgroundColor: null,
           imageTimeout: 30000,
+          foreignObjectRendering: true,
         });
 
         document.body.removeChild(clone);
@@ -833,7 +835,7 @@ export default function CreateMagazinePage() {
                             fontSize: (tb.fontSize ?? 16) as number,
                             color: tb.color ?? 'inherit',
                             textAlign: tb.align as any,
-                            lineHeight: tb.lineHeight ? `${tb.lineHeight}px` : undefined,
+                            lineHeight: tb.lineHeight ?? undefined,
                             letterSpacing: tb.letterSpacing ? `${tb.letterSpacing}px` : undefined,
                             overflow: 'visible',
                             zIndex: tb.zIndex ?? 2,
