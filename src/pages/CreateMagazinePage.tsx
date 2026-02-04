@@ -774,6 +774,7 @@ export default function CreateMagazinePage() {
                             <img
                               src={slotUrl}
                               crossOrigin="anonymous"
+                              className="img-reset" 
                               style={{
                                 width: '100%',
                                 height: '100%',

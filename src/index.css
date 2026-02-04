@@ -1,4 +1,10 @@
 @tailwind base;
+
+.img-reset {
+  display: inline-block;
+  vertical-align: initial;
+}
+
 @tailwind components;
 @tailwind utilities;
 
