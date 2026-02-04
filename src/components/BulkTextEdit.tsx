@@ -5,19 +5,29 @@ import { Label } from '@/components/ui/label';
 
 interface TextBlock {
   id: string;
-  defaultText: string;
+  defaultText?: string;
 }
 
 interface BulkTextEditProps {
-  textBlocks: TextBlock[];
+  textIds: string[];   // ← you keep passing textIds from CreateMagazinePage
+  textBlocks?: TextBlock[]; // optional, in case you pass blocks later
   onBulkEdit: (values: Record<string, string>) => void;
 }
 
-export function BulkTextEdit({ textBlocks, onBulkEdit }: BulkTextEditProps) {
+export function BulkTextEdit({ textIds, textBlocks, onBulkEdit }: BulkTextEditProps) {
+  // Use textBlocks if given, otherwise build a minimal one from textIds
+  const safeTextBlocks =
+    Array.isArray(textBlocks) && textBlocks.length > 0
+      ? textBlocks
+      : (Array.isArray(textIds) ? textIds.map(id => ({
+          id,
+          defaultText: id,
+        })) : []);
+
   const [values, setValues] = useState<Record<string, string>>({});
 
   const handleChange = (id: string, value: string) => {
-    setValues((prev) => ({ ...prev, [id]: value }));
+    setValues(prev => ({ ...prev, [id]: value }));
   };
 
   const handleApplyAll = () => {
@@ -32,7 +42,7 @@ export function BulkTextEdit({ textBlocks, onBulkEdit }: BulkTextEditProps) {
       </p>
 
       <div className="relative">
-        {/* Always visible scrollbar + compact height */}
+        {/* Always-visible scrollbar */}
         <div
           className="grid grid-cols-1 md:grid-cols-3 gap-2 max-h-44 overflow-y-auto pr-4"
           style={{
@@ -40,7 +50,7 @@ export function BulkTextEdit({ textBlocks, onBulkEdit }: BulkTextEditProps) {
             scrollbarColor: 'hsl(var(--muted-foreground) / 0.3) transparent',
           }}
         >
-          {textBlocks.map((tb, i) => (
+          {safeTextBlocks.map((tb, i) => (
             <div key={tb.id} className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground w-6 text-right select-none">
                 {i + 1}
@@ -48,8 +58,8 @@ export function BulkTextEdit({ textBlocks, onBulkEdit }: BulkTextEditProps) {
               <div className="flex-1">
                 <Input
                   value={values[tb.id] || ''}
-                  onChange={(e) => handleChange(tb.id, e.target.value)}
-                  placeholder={`Enter your ${tb.id} (e.g., ${tb.defaultText})`}
+                  onChange={e => handleChange(tb.id, e.target.value)}
+                  placeholder={`Enter your ${tb.id} (e.g., ${tb.defaultText || tb.id})`}
                   className="w-full"
                 />
               </div>
@@ -57,11 +67,11 @@ export function BulkTextEdit({ textBlocks, onBulkEdit }: BulkTextEditProps) {
           ))}
         </div>
 
-        {/* Visible scroll hint (text) */}
+        {/* scroll hint */}
         <div
           className="pointer-events-none absolute inset-0 flex items-center justify-end pr-2 pointer-events-none"
           style={{
-            opacity: textBlocks.length > 6 ? 0.6 : 0,
+            opacity: safeTextBlocks.length > 6 ? 0.6 : 0,
             transition: 'opacity 0.2s ease',
           }}
         >
