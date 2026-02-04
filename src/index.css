@@ -1,8 +1,9 @@
 @tailwind base;
 
+
 .img-reset {
   display: inline-block;
-  vertical-align: initial;
+  vertical-align: top;
 }
 
 @tailwind components;
