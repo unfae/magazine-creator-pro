@@ -9,20 +9,22 @@ interface TextBlock {
 }
 
 interface BulkTextEditProps {
-  textIds: string[];   // ← you keep passing textIds from CreateMagazinePage
-  textBlocks?: TextBlock[]; // optional, in case you pass blocks later
+  textIds: string[];
+  textBlocks?: TextBlock[];
   onBulkEdit: (values: Record<string, string>) => void;
 }
 
 export function BulkTextEdit({ textIds, textBlocks, onBulkEdit }: BulkTextEditProps) {
-  // Use textBlocks if given, otherwise build a minimal one from textIds
+  // Prefer textBlocks if given, else build from textIds
   const safeTextBlocks =
     Array.isArray(textBlocks) && textBlocks.length > 0
       ? textBlocks
-      : (Array.isArray(textIds) ? textIds.map(id => ({
+      : Array.isArray(textIds)
+      ? textIds.map(id => ({
           id,
           defaultText: id,
-        })) : []);
+        }))
+      : [];
 
   const [values, setValues] = useState<Record<string, string>>({});
 
@@ -37,17 +39,21 @@ export function BulkTextEdit({ textIds, textBlocks, onBulkEdit }: BulkTextEditPr
   return (
     <div className="p-2 border rounded mb-2">
       <Label>Enter your details.</Label>
-      <p className="text-sm text-muted-foreground mb-2">
+      <p className="text-sm text-muted-foreground mb-1">
         Enter your details here once to apply in all places and manually edit if needed.
+      </p>
+      <p className="text-xs text-muted-foreground mb-2">
+        You can scroll within this container to see all fields.
       </p>
 
       <div className="relative">
-        {/* Always-visible scrollbar */}
+        {/* Scrollable container */}
         <div
           className="grid grid-cols-1 md:grid-cols-3 gap-2 max-h-44 overflow-y-auto pr-4"
           style={{
+            // Make sure scrollbar is always visible (not hidden by OS)
             scrollbarWidth: 'thin',
-            scrollbarColor: 'hsl(var(--muted-foreground) / 0.3) transparent',
+            scrollbarColor: 'hsl(var(--muted-foreground) / 0.4) transparent',
           }}
         >
           {safeTextBlocks.map((tb, i) => (
@@ -65,17 +71,6 @@ export function BulkTextEdit({ textIds, textBlocks, onBulkEdit }: BulkTextEditPr
               </div>
             </div>
           ))}
-        </div>
-
-        {/* scroll hint */}
-        <div
-          className="pointer-events-none absolute inset-0 flex items-center justify-end pr-2 pointer-events-none"
-          style={{
-            opacity: safeTextBlocks.length > 6 ? 0.6 : 0,
-            transition: 'opacity 0.2s ease',
-          }}
-        >
-          <span className="text-xs text-muted-foreground select-none">scroll</span>
         </div>
       </div>
 
