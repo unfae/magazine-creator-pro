@@ -684,17 +684,24 @@ export default function CreateMagazinePage() {
 
         {template.cta_link_url ? (
           <div className="mt-4">
-            <a
-              href={template.cta_link_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-primary text-base font-medium hover:underline"
+            <Button
+              asChild
+              variant="outline"
+              className="border-gold text-gold hover:bg-gold/10"
             >
-              {template.cta_link_text}
-              <ChevronRight className="h-4 w-4" />
-            </a>
+              <a
+                href={template.cta_link_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-base font-medium"
+              >
+                {template.cta_link_text}
+                <ChevronRight className="h-4 w-4" />
+              </a>
+            </Button>
           </div>
         ) : null}
+
 
 
       </div>
