@@ -49,11 +49,11 @@ export function TipsSection() {
           <div className="inline-flex items-center gap-2 mb-4">
             <Sparkles className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-editorial-md text-foreground">
-              Tips to get the best from the magazine creator
+              Tips to get the best from the MagznMaker Templates
             </h2>
           </div>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Make the most of the magazine creator with these simple best practices.
+            Make the most of the MagznMaker website with these simple best practices.
           </p>
         </div>
 
