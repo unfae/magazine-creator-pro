@@ -6,6 +6,8 @@ import { getFeaturedTemplates } from '@/data/featured_templates';
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
+import { TipsSection } from '@/components/TipsSection';
+
 
 
 
@@ -142,6 +144,8 @@ export default function Index() {
           </div>
         </div>
       </section>
+
+      <TipsSection />
 
       {/* CTA */}
       <section className="py-20">
