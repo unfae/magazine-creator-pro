@@ -60,17 +60,18 @@ export default function Index() {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/auth?mode=signup">
-                <Button variant="elegant" size="lg">
+                <Button variant="elegant" size="lg" className="w-full sm:w-56">
                   Get Started Free
                   <ArrowRight className="h-5 w-5 ml-2" />
                 </Button>
               </Link>
               <Link to="/auth?mode=login">
-                <Button variant="outline" size="lg">
+                <Button variant="outline" size="lg" className="w-full sm:w-56">
                   Sign In
                 </Button>
               </Link>
             </div>
+
           </div>
         </div>
       </section>
