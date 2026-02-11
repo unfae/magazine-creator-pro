@@ -12,7 +12,7 @@ const tips = [
   {
     title: 'Review before exporting',
     content:
-      'After generating your magazine, preview the pages carefully before exporting to PDF or video for the best result.',
+      'After generating your magazine, preview the pages carefully before exporting the magazine to guarantee the best result.',
     number: 2,
   },
   {
@@ -34,7 +34,7 @@ const tips = [
     number: 5,
   },
   {
-    title: 'iPhone users – download one at a time',
+    title: 'On Iphone; download one image at a time',
     content:
       'On iPhone, download page images one after the other, as the browser does not allow multiple downloads at once.',
     number: 6,
