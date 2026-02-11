@@ -287,6 +287,23 @@ export default function CreateMagazinePage() {
     });
   };
 
+  const getAvailableEmptySlots = () => {
+    const emptySlots: { pageNumber: number; slotId: string }[] = [];
+    for (const pg of templatePages) {
+      const layout = pg.layout_json;
+      if (!layout?.imageBlocks) continue;
+      for (const ib of layout.imageBlocks) {
+        if (ib.editable === false) continue;
+        const imageUrl = (userImages[pg.page_number] || {})[ib.id] || '';
+        if (!imageUrl) {
+          emptySlots.push({ pageNumber: pg.page_number, slotId: ib.id });
+        }
+      }
+    }
+    return emptySlots;
+  };
+
+
   const handleUploadAll = async () => {
     if (filesRef.current.length === 0) {
       toast.error('No photos selected to upload');
@@ -304,34 +321,64 @@ export default function CreateMagazinePage() {
         return;
       }
 
-      const toastId = toast.loading(`Uploading images… 0 of ${filesRef.current.length}`, { position: 'top-left' });
+      const toastId = toast.loading(
+        `Uploading images… 0 of ${filesRef.current.length}`,
+        { position: 'top-left' }
+      );
 
       let uploadedCount = 0;
+      const publicUrls: string[] = [];
 
       for (let i = 0; i < filesRef.current.length; i++) {
         const file = filesRef.current[i];
         const filePath = `${user.id}/${Date.now()}_${file.name}`;
-        const { data, error } = await supabase.storage.from('magazine-assets').upload(filePath, file, { cacheControl: '3600', upsert: false });
+        const { data, error } = await supabase
+          .from('magazine-assets')
+          .upload(filePath, file, { cacheControl: '3600', upsert: false });
 
         if (error) {
           console.error(error);
           continue;
         }
 
-        const publicUrl = supabase.storage.from('magazine-assets').getPublicUrl(data.path).data.publicUrl;
+        const publicUrl = supabase.storage
+          .from('magazine-assets')
+          .getPublicUrl(data.path).data.publicUrl;
 
-        applyNextImageToTemplate(publicUrl);
+        publicUrls.push(publicUrl);
 
         uploadedCount++;
+        toast.loading(
+          `Uploading images… ${uploadedCount} of ${filesRef.current.length} uploaded`,
+          { id: toastId }
+        );
 
-        toast.loading(`Uploading images… ${uploadedCount} of ${filesRef.current.length} uploaded`, { id: toastId });
+        // ✅ Apply this image immediately to next slot
+        applyNextImageToTemplate(publicUrl);
       }
 
-      toast.success(`Images uploaded successfully (${uploadedCount}/${filesRef.current.length})`, { id: toastId });
+      // ✅ AFTER ALL UPLOADS: loop over remaining empty slots
+      const emptySlots = getAvailableEmptySlots();
+      if (emptySlots.length > 0 && publicUrls.length > 0) {
+        emptySlots.forEach((slot, idx) => {
+          const imageUrl = publicUrls[idx % publicUrls.length];
+          setUserImages((prev) => {
+            const copy = { ...prev };
+            copy[slot.pageNumber] = { ...(copy[slot.pageNumber] || {}) };
+            copy[slot.pageNumber][slot.slotId] = imageUrl;
+            return copy;
+          });
+        });
+      }
 
+      // Update photos once at the end
+      setPhotos((prev) => [...prev, ...publicUrls]);
       filesRef.current = [];
-      setPhotos([]);
 
+      toast.success(
+        `Images uploaded successfully (${uploadedCount}/${filesRef.current.length})`,
+        { id: toastId }
+      );
     } catch (err) {
       console.error(err);
       toast.error('Something went wrong uploading images');
@@ -339,6 +386,7 @@ export default function CreateMagazinePage() {
       setIsGenerating(false);
     }
   };
+
 
   const handleTextChange = (pageNumber: number, textId: string, value: string) => {
     setUserTexts((prev) => {
