@@ -44,7 +44,7 @@ export function TemplateCard({ template }: TemplateCardProps) {
             </span>
             <span className="flex items-center gap-1">
               <Image className="h-3.5 w-3.5" />
-              {template.requiredPhotos} photos
+              {template.requiredPhotos} photos max.
             </span>
           </div>
         </div>
