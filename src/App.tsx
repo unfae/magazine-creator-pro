@@ -20,6 +20,8 @@ import AuthCallback from "@/pages/AuthCallback";
 import CheckEmailPage from "@/pages/CheckEmailPage";
 import { AuthProvider } from '@/context/AuthContext';
 import PageJsonGenerator from "@/pages/PageJsonGenerator";
+import TemplatePaymentCallbackPage from "@/pages/TemplatePaymentCallbackPage";
+
 
 
 
@@ -52,6 +54,8 @@ const App = () => (
               <Route path="/magazines" element={<MagazinesPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/templatepayment/callback" element={<TemplatePaymentCallbackPage />} />
+
             </Route>
 
             <Route path="*" element={<NotFound />} />

@@ -98,7 +98,13 @@ serve(async (req) => {
         email: user.email,
         amount: Math.round(Number(amount) * 100),
         reference,
+        callback_url: 'https://www.magznmaker.com/templatepayment/callback',
+        metadata: {
+          template_id: templateId,
+          user_id: user.id,
+        },
       }),
+
     })
 
     const data = await res.json()
