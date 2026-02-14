@@ -14,7 +14,7 @@ export function useTemplateAccess(templatePay: any) {
         return;
       }
 
-      // Free template => always accessible
+      // Free template => always accessible..
       if (!templatePay?.price || templatePay.price === 0) {
         setHasAccess(true);
         setLoading(false);
@@ -58,7 +58,6 @@ export function useTemplateAccess(templatePay: any) {
     // Free template: no paywall
     if (!templatePay?.price || templatePay.price === 0) return;
 
-    // ✅ Ensure user is signed in before calling the Edge Function
     const {
       data: { session },
       error: sessionErr,
@@ -70,16 +69,13 @@ export function useTemplateAccess(templatePay: any) {
     }
 
     if (!session) {
-      // Redirect to your auth page (adjust route if yours differs)
       window.location.href = '/auth';
       return;
     }
 
     const { data, error } = await supabase.functions.invoke('init-paystack', {
       body: { templateId: templatePay.id, amount: templatePay.price },
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
+      // ❌ remove manual headers; supabase-js attaches Authorization automatically
     });
 
     if (error) {
@@ -96,6 +92,3 @@ export function useTemplateAccess(templatePay: any) {
 
     window.location.href = authorizationUrl;
   };
-
-  return { hasTemplateAccess: hasAccess, loading, openPaywall };
-}

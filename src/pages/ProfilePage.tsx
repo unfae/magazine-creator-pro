@@ -55,7 +55,7 @@ export default function ProfilePage() {
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error(error);
@@ -63,6 +63,25 @@ export default function ProfilePage() {
         setLoading(false);
         return;
       }
+
+      // data can be null if no profile row exists yet
+      if (!data) {
+        // fallback: show at least auth info
+        const formatted = {
+          name: user.user_metadata?.full_name ?? '',
+          email: user.email ?? '',
+          avatarUrl: '',
+          joinedDate: user.created_at
+            ? new Date(user.created_at).toLocaleDateString()
+            : '',
+        };
+
+        setProfile(formatted);
+        setEditedProfile(formatted);
+        setLoading(false);
+        return;
+      }
+
 
       if (!mounted) return;
 
