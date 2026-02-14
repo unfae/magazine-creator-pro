@@ -75,11 +75,12 @@ serve(async (req) => {
       user_id: user.id,
       template_id: templateId,
       provider: 'paystack',
-      reference,
+      provider_reference: reference,   // <- changed
       amount,
       currency: 'NGN',
       status: 'pending',
     })
+
 
     if (insertErr) {
       return new Response(JSON.stringify({ error: insertErr.message }), {

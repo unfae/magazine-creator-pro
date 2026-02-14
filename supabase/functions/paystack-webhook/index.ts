@@ -16,7 +16,6 @@ async function hmacSha512Hex(secret: string, payload: string) {
     new TextEncoder().encode(payload),
   );
 
-  // Convert ArrayBuffer -> hex
   const bytes = new Uint8Array(sig);
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
@@ -50,18 +49,13 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // IMPORTANT: adjust column name to your schema:
-    // If your column is `reference`, keep it.
-    // If it's `paystack_reference`, change the eq() column.
     const { error } = await supabase
       .from("template_payments")
       .update({
         status: "success",
-        // optionally store the raw event for audit:
-        // paystack_event: event,
         updated_at: new Date().toISOString(),
       })
-      .eq("reference", reference);
+      .eq("provider_reference", reference); // <- use provider_reference
 
     if (error) return new Response(error.message, { status: 400 });
   }
