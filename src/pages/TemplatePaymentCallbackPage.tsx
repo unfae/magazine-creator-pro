@@ -11,6 +11,7 @@ export default function TemplatePaymentCallbackPage() {
   const [loading, setLoading] = useState(true);
 
   const reference = params.get("reference");
+  const templateId = params.get("templateId");
 
   useEffect(() => {
     let cancelled = false;
@@ -42,7 +43,19 @@ export default function TemplatePaymentCallbackPage() {
         }
 
         toast.success("Payment verified. Template unlocked!");
-        navigate("/dashboard", { replace: true });
+
+        // Decide where to redirect
+        let destination = "/dashboard";
+
+        if (templateId) {
+          // Use your existing template edit route:
+          // https://www.magznmaker.com/create/95500aee-1c79-4665-9c74-550fc1c20c84
+          destination = `/create/${templateId}`;
+        }
+
+        if (!cancelled) {
+          navigate(destination, { replace: true });
+        }
       } catch (e: any) {
         toast.error(e?.message || "Payment verification failed.");
       } finally {
@@ -53,7 +66,7 @@ export default function TemplatePaymentCallbackPage() {
     return () => {
       cancelled = true;
     };
-  }, [reference, navigate]);
+  }, [reference, templateId, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
@@ -69,10 +82,16 @@ export default function TemplatePaymentCallbackPage() {
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => {
+                // If they close browser mid-flow, send them to the template or fallback
+                const destination = templateId
+                  ? `/create/${templateId}`
+                  : "/dashboard";
+                navigate(destination, { replace: true });
+              }}
               disabled={loading}
             >
-              Go to dashboard
+              Go to template
             </Button>
 
             <Button

@@ -174,8 +174,8 @@ serve(async (req) => {
           email: userEmail,
           amount: Math.round(Number(amount) * 100),
           reference,
-          callback_url:
-            "https://www.magznmaker.com/templatepayment/callback",
+          callback_url: `https://www.magznmaker.com/templatepayment/callback?templateId=${templateId}`,
+
           metadata: {
             template_id: templateId,
             user_id: userId
