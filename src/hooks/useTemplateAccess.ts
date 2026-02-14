@@ -14,7 +14,7 @@ export function useTemplateAccess(templatePay: any) {
         return;
       }
 
-      // Free template => always accessible..
+      // Free template => always accessible
       if (!templatePay?.price || templatePay.price === 0) {
         setHasAccess(true);
         setLoading(false);
@@ -92,3 +92,7 @@ export function useTemplateAccess(templatePay: any) {
 
     window.location.href = authorizationUrl;
   };
+
+
+  return { hasTemplateAccess: hasAccess, loading, openPaywall };
+}
