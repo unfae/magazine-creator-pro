@@ -332,7 +332,7 @@ export default function CreateMagazinePage() {
       for (let i = 0; i < filesRef.current.length; i++) {
         const file = filesRef.current[i];
         const filePath = `${user.id}/${Date.now()}_${file.name}`;
-        const { data, error } = await supabase
+        const { data, error } = await supabase.storage
           .from('magazine-assets')
           .upload(filePath, file, { cacheControl: '3600', upsert: false });
 
