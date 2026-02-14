@@ -951,8 +951,8 @@ export default function CreateMagazinePage() {
           <div className="mb-4">
             <label className="block text-sm font-medium mb-2">Bulk Image Upload</label>
             <p className="text-sm text-muted-foreground mb-3">
-              Upload all your photos and we will apply them to the template automatically. You can adjust each page
-              afterwards.
+              Upload your photos and we’ll auto-fit them into the template. You can fine-tune each page after. 
+              If using an older phone, Upload in batches of 5 for smoother performance.
             </p>
             <input
               ref={bulkFileInputRef}
