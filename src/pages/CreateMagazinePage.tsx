@@ -381,7 +381,7 @@ export default function CreateMagazinePage() {
       );
     } catch (err) {
       console.error(err);
-      toast.error('Something went wrong uploading images');
+      toast.error('Something went wrong uploading images. Try uploading 1 by 1');
     } finally {
       setIsGenerating(false);
     }
@@ -537,7 +537,7 @@ export default function CreateMagazinePage() {
       navigate('/magazines');
     } catch (err) {
       console.error(err);
-      toast.error('Something went wrong while saving magazine');
+      toast.error('Something went wrong while saving magazine. Please refresh and try again');
     } finally {
       setIsGenerating(false);
     }
