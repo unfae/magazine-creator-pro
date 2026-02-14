@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { FunctionsHttpError } from '@supabase/supabase-js';
+
 
 export function useTemplateAccess(templatePay: any) {
   const [hasAccess, setHasAccess] = useState(false);
@@ -51,17 +53,18 @@ export function useTemplateAccess(templatePay: any) {
 
     checkAccess();
   }, [templatePay?.id, templatePay?.price]);
+  
 
   const openPaywall = async () => {
     if (!templatePay) return;
-
-    // Free template: no paywall
     if (!templatePay?.price || templatePay.price === 0) return;
 
     const {
       data: { session },
       error: sessionErr,
     } = await supabase.auth.getSession();
+
+    console.log('session from client', session, sessionErr);
 
     if (sessionErr) {
       console.error(sessionErr);
@@ -73,25 +76,31 @@ export function useTemplateAccess(templatePay: any) {
       return;
     }
 
-    const { data, error } = await supabase.functions.invoke('init-paystack', {
-      body: { templateId: templatePay.id, amount: templatePay.price },
-      // ❌ remove manual headers; supabase-js attaches Authorization automatically
-    });
+    try {
+      const { data, error } = await supabase.functions.invoke('init-paystack', {
+        body: { templateId: templatePay.id, amount: templatePay.price },
+      });
 
-    if (error) {
-      console.error(error);
-      return;
+      if (error) throw error;
+
+      const authorizationUrl = data?.data?.authorization_url;
+
+      if (!authorizationUrl) {
+        console.error('init-paystack did not return authorization_url', data);
+        return;
+      }
+
+      window.location.href = authorizationUrl;
+    } catch (e: any) {
+      if (e instanceof FunctionsHttpError) {
+        const errorBody = await e.context.json();
+        console.error('init-paystack HTTP error', e.status, errorBody);
+      } else {
+        console.error(e);
+      }
     }
-
-    const authorizationUrl = data?.data?.authorization_url;
-
-    if (!authorizationUrl) {
-      console.error('init-paystack did not return authorization_url', data);
-      return;
-    }
-
-    window.location.href = authorizationUrl;
   };
+
 
 
   return { hasTemplateAccess: hasAccess, loading, openPaywall };
