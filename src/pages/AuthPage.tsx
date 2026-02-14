@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { FcGoogle } from 'react-icons/fc';
@@ -24,9 +24,6 @@ export default function AuthPage() {
 
   const [bgImages, setBgImages] = useState<string[]>([]);
   const [bgIndex, setBgIndex] = useState(0);
-  
-
-
 
   const [formData, setFormData] = useState({
     name: '',
@@ -41,7 +38,6 @@ export default function AuthPage() {
     if (mode === 'signup') setIsLogin(false);
   }, [location.search]);
 
-
   useEffect(() => {
     let mounted = true;
 
@@ -54,10 +50,9 @@ export default function AuthPage() {
 
       if (error) return;
 
-      const urls =
-        (data ?? [])
-          .map((r: any) => (r.thumbnailUrl ?? '').trim())
-          .filter(Boolean);
+      const urls = (data ?? [])
+        .map((r: any) => (r.thumbnailUrl ?? '').trim())
+        .filter(Boolean);
 
       if (mounted) setBgImages(urls);
     })();
@@ -76,9 +71,6 @@ export default function AuthPage() {
 
     return () => clearInterval(interval);
   }, [bgImages]);
-
-
-
 
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -103,6 +95,7 @@ export default function AuthPage() {
         });
 
         if (error) throw error;
+
         if (!data.session) {
           toast.error('Please verify your email before signing in.');
           navigate('/check-email');
@@ -112,11 +105,23 @@ export default function AuthPage() {
         toast.success('Welcome back!');
         navigate('/dashboard');
       } else {
+        const fullName = formData.name.trim();
+
+        // Make full name required for signup
+        if (!fullName) {
+          toast.error('Full name is required to create an account.');
+          return;
+        }
+
         const { error } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
           options: {
             emailRedirectTo: `${window.location.origin}/auth/callback`,
+            // Store metadata so your auth.users -> profiles trigger can populate profiles.full_name
+            data: {
+              full_name: fullName,
+            },
           },
         });
 
@@ -135,7 +140,6 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-background flex">
       {/* LEFT */}
-     
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-foreground to-charcoal-light" />
 
@@ -158,10 +162,7 @@ export default function AuthPage() {
             ))}
           </div>
         </div>
-
       </div>
-
-
 
       {/* RIGHT */}
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
@@ -170,14 +171,16 @@ export default function AuthPage() {
             <CardHeader className="text-center">
               <CardTitle>{isLogin ? 'Welcome Back' : 'Create Account'}</CardTitle>
               <CardDescription>
-                {isLogin
-                  ? 'Sign in to continue'
-                  : 'Start your creative journey'}
+                {isLogin ? 'Sign in to continue' : 'Start your creative journey'}
               </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-6">
-              <Button variant="outline" className="w-full" onClick={signInWithGoogle}>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={signInWithGoogle}
+              >
                 <FcGoogle size={20} /> Continue with Google
               </Button>
 
@@ -189,6 +192,9 @@ export default function AuthPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
+                    required
+                    name="fullName"
+                    autoComplete="name"
                   />
                 )}
 
@@ -200,6 +206,8 @@ export default function AuthPage() {
                     setFormData({ ...formData, email: e.target.value })
                   }
                   required
+                  name="email"
+                  autoComplete="email"
                 />
 
                 <div className="relative">
@@ -211,6 +219,8 @@ export default function AuthPage() {
                       setFormData({ ...formData, password: e.target.value })
                     }
                     required
+                    name="password"
+                    autoComplete={isLogin ? 'current-password' : 'new-password'}
                   />
                   <button
                     type="button"
@@ -229,7 +239,11 @@ export default function AuthPage() {
 
               <p className="text-center text-sm">
                 {isLogin ? "Don't have an account?" : 'Already have one?'}{' '}
-                <button onClick={() => setIsLogin(!isLogin)} className="underline">
+                <button
+                  onClick={() => setIsLogin(!isLogin)}
+                  className="underline"
+                  type="button"
+                >
                   {isLogin ? 'Sign up' : 'Sign in'}
                 </button>
               </p>
