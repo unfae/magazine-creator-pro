@@ -40,57 +40,51 @@ export function useVideoExport() {
     }
   };
 
-  const pollVideoStatus = async (statusUrl: string, renderId: string) => {
-
-    const pollUrl = statusUrl.replace('/sandbox/render', '/stage/render');
-
+    const pollVideoStatus = async (statusUrl: string, renderId: string) => {
+    // Shotstack status endpoint (GET /{renderId})
+    const pollUrl = `https://api.shotstack.io/stage/render/${renderId}`;
+    
     const poll = async () => {
-      try {
-        const res = await fetch(statusUrl, {
-          headers: {
-            'x-api-key': 'MwuTPl8lVltu14HCnLVwGGAJHiBLAVeST54dkwhB',
-          },
+        try {
+        const res = await fetch(pollUrl, {
+            headers: {
+            'x-api-key': 'MwuTPl8lVltu14HCnLVwGGAJHiBLAVeST54dkwhB'
+            }
         });
-        
-        if (!res.ok) {
-          console.error('Status check failed');
-          return;
-        }
         
         const data = await res.json();
         
+        console.log('Poll status:', data); // DEBUG
+        
         if (data.response?.status === 'done') {
-          const videoUrl = data.response.url;
-          toast.success('Video ready!', {
+            const videoUrl = data.response.url;
+            toast.success('✅ Video Ready!', {
             action: {
-              label: 'Download MP4',
-              onClick: () => {
-                const a = document.createElement('a');
-                a.href = videoUrl;
-                a.download = `magazine-${renderId}.mp4`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-              },
-            },
-          });
-          return;
+                label: 'Download',
+                onClick: () => {
+                window.open(videoUrl, '_blank');
+                }
+            }
+            });
+            return;
         }
         
         if (data.response?.status === 'failed') {
-          toast.error('Video render failed');
-          return;
+            toast.error('Render failed (check images URLs)');
+            return;
         }
         
-        // Still processing - poll again in 3s
-        setTimeout(poll, 3000);
-      } catch (err) {
-        console.error('Status poll failed:', err);
-      }
+        // Still processing
+        setTimeout(poll, 4000);
+        
+        } catch (err) {
+        console.error('Poll error:', err);
+        }
     };
     
     poll();
-  };
+    };
+
 
   return { 
     exportVideo, 
