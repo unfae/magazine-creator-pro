@@ -670,7 +670,7 @@ export default function CreateMagazinePage() {
       return;
     }
 
-    setIsGenerating(true);  // Keep your existing loading state
+    setIsGenerating(true);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -679,16 +679,29 @@ export default function CreateMagazinePage() {
         return;
       }
 
-      // Call the hook (replaces all your manual logic!)
-      await exportVideo(templatePages, template, user.id);
+      // YOUR EXISTING WORKING LOGIC (handles page_number, backgrounds, etc.)
+      const pageUrls = templatePages.map(
+        (pg) =>
+          document.getElementById(`page-${pg.pagenumber}`)?.querySelector('img')?.src ||
+          buildTemplatePageUrl(template.slug, pg.pagenumber)
+      ).filter(Boolean);
+
+      if (pageUrls.length === 0) {
+        toast.error('No valid page images found');
+        return;
+      }
+
+      // Pass YOUR pageUrls to hook (handles API + polling)
+      await exportVideo(pageUrls, template, user.id);
 
     } catch (err) {
       console.error(err);
       toast.error('Failed to export video');
     } finally {
-      setIsGenerating(false);  // Keep your existing cleanup
+      setIsGenerating(false);
     }
   };
+
 
 
   return (

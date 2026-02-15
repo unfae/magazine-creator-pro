@@ -4,8 +4,8 @@ import { toast } from 'sonner';
 export function useVideoExport() {
   const [isExportingVideo, setIsExportingVideo] = useState(false);
 
-  const exportVideo = async (templatePages: any[], template: any, userId: string) => {
-    if (templatePages.length === 0) {
+  const exportVideo = async (pageUrls: string[], template: any, userId: string) => {
+    if (pageUrls.length === 0) {
       toast.error('No pages to export');
       return;
     }
@@ -13,17 +13,6 @@ export function useVideoExport() {
     setIsExportingVideo(true);
 
     try {
-      // Extract page image URLs (SAME logic as your PDF export!)
-      const pageUrls: string[] = templatePages.map((pg: any) => {
-        const pageElement = document.getElementById(`page-${pg.pagenumber}`);
-        const img = pageElement?.querySelector('img') as HTMLImageElement;
-        return img?.src || '';
-      }).filter(Boolean);
-
-      if (pageUrls.length === 0) {
-        throw new Error('No valid page images found');
-      }
-
       const res = await fetch('/api/export-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -40,7 +29,7 @@ export function useVideoExport() {
 
       toast.success('Video rendering started! (3-10s)');
       
-      // Auto-poll status
+      // Auto-poll status until ready
       pollVideoStatus(data.statusUrl, data.renderId);
       
     } catch (err: any) {
@@ -56,7 +45,7 @@ export function useVideoExport() {
       try {
         const res = await fetch(statusUrl, {
           headers: {
-            'x-api-key': 'MwuTPl8lVltu14HCnLVwGGAJHiBLAVeST54dkwhB', // Your key for client-side polling
+            'x-api-key': 'MwuTPl8lVltu14HCnLVwGGAJHiBLAVeST54dkwhB',
           },
         });
         
@@ -69,14 +58,16 @@ export function useVideoExport() {
         
         if (data.response?.status === 'done') {
           const videoUrl = data.response.url;
-          toast.success(`Video ready!`, {
+          toast.success('Video ready!', {
             action: {
-              label: 'Download',
+              label: 'Download MP4',
               onClick: () => {
                 const a = document.createElement('a');
                 a.href = videoUrl;
-                a.download = `magazine-video-${renderId}.mp4`;
+                a.download = `magazine-${renderId}.mp4`;
+                document.body.appendChild(a);
                 a.click();
+                document.body.removeChild(a);
               },
             },
           });
@@ -88,14 +79,13 @@ export function useVideoExport() {
           return;
         }
         
-        // Still processing - poll again
+        // Still processing - poll again in 3s
         setTimeout(poll, 3000);
       } catch (err) {
         console.error('Status poll failed:', err);
       }
     };
     
-    // Start polling
     poll();
   };
 
