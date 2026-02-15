@@ -8,10 +8,8 @@ export default async function handler(req: any, res: any) {
   try {
     const { pages, userId, templateName, templateId } = req.body;
 
-    console.log('Export video - pages:', pages.length);
-
     if (!pages || !Array.isArray(pages) || pages.length === 0) {
-      return res.status(400).json({ error: 'No pages provided' });
+      return res.status(400).json({ error: 'No pages' });
     }
 
     const supabase = createClient(
@@ -20,14 +18,11 @@ export default async function handler(req: any, res: any) {
     );
 
     const SHOTSTACK_API_KEY = process.env.SHOTSTACK_API_KEY!;
-    if (!SHOTSTACK_API_KEY) {
-      return res.status(500).json({ error: 'Missing API key' });
-    }
+    
+    // ✅ OFFICIAL SANDBOX ENDPOINT from Shotstack docs
+    const SHOTSTACK_URL = 'https://api.shotstack.io/stage/render';
 
-    // ✅ CORRECT ENDPOINT: Just /render (sandbox auto-detected)
-    const SHOTSTACK_URL = 'https://api.shotstack.io/sandbox/render';
-
-    const clips = pages.slice(0, 10).map((src: string, i: number) => ({  // Max 10 for testing
+    const clips = pages.map((src: string, i: number) => ({
       asset: { type: 'image', src },
       start: i * 3,
       length: 3,
@@ -42,8 +37,7 @@ export default async function handler(req: any, res: any) {
       output: {
         format: 'mp4',
         resolution: 'sd'
-      },
-      name: `${templateName}-${Date.now()}`
+      }
     };
 
     const response = await fetch(SHOTSTACK_URL, {
@@ -56,32 +50,29 @@ export default async function handler(req: any, res: any) {
     });
 
     const data = await response.text();
-    console.log('SHOTSTACK FULL RESPONSE:', data);
-
+    
     if (!response.ok) {
-      return res.status(response.status).json({ 
-        error: `Shotstack ${response.status}: ${data}` 
-      });
+      console.error('SHOTSTACK ERROR:', data);
+      return res.status(500).json({ error: data });
     }
 
     const result = JSON.parse(data);
-    const renderId = result.id;
+    const renderId = result.response.id;  // Shotstack wraps in "response"
 
     await supabase.from('exported_videos_log').insert({
       user_id: userId,
       template_name: templateName,
-      render_id: renderId,
-      status: 'queued'
+      render_id: renderId
     });
 
     res.status(202).json({
       success: true,
       renderId,
-      statusUrl: `https://api.shotstack.io/sandbox/render/${renderId}`
+      statusUrl: `https://api.shotstack.io/stage/render/${renderId}`
     });
 
   } catch (error: any) {
-    console.error('API ERROR:', error);
-    res.status(500).json({ error: error.toString() });
+    console.error(error);
+    res.status(500).json({ error: error.message });
   }
 }

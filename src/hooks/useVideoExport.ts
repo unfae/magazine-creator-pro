@@ -41,6 +41,9 @@ export function useVideoExport() {
   };
 
   const pollVideoStatus = async (statusUrl: string, renderId: string) => {
+
+    const pollUrl = statusUrl.replace('/sandbox/render', '/stage/render');
+
     const poll = async () => {
       try {
         const res = await fetch(statusUrl, {
