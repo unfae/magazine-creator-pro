@@ -10,8 +10,9 @@ export default function TemplatePaymentCallbackPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
 
+  // Optionally read templateId from URL (Paystack may strip it, but it's harmless to keep)
   const reference = params.get("reference");
-  const templateId = params.get("templateId");
+  const urlTemplateId = params.get("templateId");
 
   useEffect(() => {
     let cancelled = false;
@@ -45,11 +46,20 @@ export default function TemplatePaymentCallbackPage() {
         toast.success("Payment verified. Template unlocked!");
 
         // Decide where to redirect
+        let templateId = urlTemplateId;
+
+        // If URL doesn't have it, try localStorage (set in useTemplateAccess before opening Paystack)
+        if (!templateId) {
+          templateId = localStorage.getItem("pending_template_id");
+        }
+
+        // Clear the stored templateId after use
+        localStorage.removeItem("pending_template_id");
+
         let destination = "/dashboard";
 
         if (templateId) {
           // Use your existing template edit route:
-          // https://www.magznmaker.com/create/95500aee-1c79-4665-9c74-550fc1c20c84
           destination = `/create/${templateId}`;
         }
 
@@ -66,7 +76,7 @@ export default function TemplatePaymentCallbackPage() {
     return () => {
       cancelled = true;
     };
-  }, [reference, templateId, navigate]);
+  }, [reference, urlTemplateId, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
@@ -84,9 +94,8 @@ export default function TemplatePaymentCallbackPage() {
               variant="outline"
               onClick={() => {
                 // If they close browser mid-flow, send them to the template or fallback
-                const destination = templateId
-                  ? `/create/${templateId}`
-                  : "/dashboard";
+                const storedId = localStorage.getItem("pending_template_id");
+                const destination = storedId ? `/create/${storedId}` : "/dashboard";
                 navigate(destination, { replace: true });
               }}
               disabled={loading}

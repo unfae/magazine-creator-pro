@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { FunctionsHttpError } from '@supabase/supabase-js';
-
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 
 export function useTemplateAccess(templatePay: any) {
   const [hasAccess, setHasAccess] = useState(false);
@@ -38,11 +37,11 @@ export function useTemplateAccess(templatePay: any) {
       }
 
       const { data, error } = await supabase
-        .from('template_payments')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('template_id', templatePay.id)
-        .eq('status', 'success')
+        .from("template_payments")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("template_id", templatePay.id)
+        .eq("status", "success")
         .maybeSingle();
 
       if (error) console.error(error);
@@ -53,7 +52,6 @@ export function useTemplateAccess(templatePay: any) {
 
     checkAccess();
   }, [templatePay?.id, templatePay?.price]);
-  
 
   const openPaywall = async () => {
     if (!templatePay) return;
@@ -64,7 +62,7 @@ export function useTemplateAccess(templatePay: any) {
       error: sessionErr,
     } = await supabase.auth.getSession();
 
-    console.log('session from client', session, sessionErr);
+    console.log("session from client", session, sessionErr);
 
     if (sessionErr) {
       console.error(sessionErr);
@@ -72,12 +70,17 @@ export function useTemplateAccess(templatePay: any) {
     }
 
     if (!session) {
-      window.location.href = '/auth';
+      window.location.href = "/auth";
       return;
     }
 
+    // Store templateId so we can read it after callback
+    if (templatePay.id) {
+      localStorage.setItem("pending_template_id", templatePay.id);
+    }
+
     try {
-      const { data, error } = await supabase.functions.invoke('init-paystack', {
+      const { data, error } = await supabase.functions.invoke("init-paystack", {
         body: { templateId: templatePay.id, amount: templatePay.price },
       });
 
@@ -86,7 +89,7 @@ export function useTemplateAccess(templatePay: any) {
       const authorizationUrl = data?.data?.authorization_url;
 
       if (!authorizationUrl) {
-        console.error('init-paystack did not return authorization_url', data);
+        console.error("init-paystack did not return authorization_url", data);
         return;
       }
 
@@ -94,14 +97,12 @@ export function useTemplateAccess(templatePay: any) {
     } catch (e: any) {
       if (e instanceof FunctionsHttpError) {
         const errorBody = await e.context.json();
-        console.error('init-paystack HTTP error', e.status, errorBody);
+        console.error("init-paystack HTTP error", e.status, errorBody);
       } else {
         console.error(e);
       }
     }
   };
-
-
 
   return { hasTemplateAccess: hasAccess, loading, openPaywall };
 }
