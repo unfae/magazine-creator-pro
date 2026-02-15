@@ -13,6 +13,8 @@ import { PageDownloadDialog } from '@/components/PageDownloadDialog';
 import { getAllowedFontsCached, ensureGoogleFontsLoaded } from '@/lib/fontLoader';
 import { BulkTextEdit } from '@/components/BulkTextEdit';
 import { scheduleExportAssetsForDeletion } from '@/lib/scheduleExportAssetsForDeletion';
+import { useVideoExport } from '@/hooks/useVideoExport';  // ✅ Add this
+
 
 type TextBlock = {
   id: string;
@@ -95,6 +97,9 @@ export default function CreateMagazinePage() {
   const PREVIEW_SCALE = 0.3;
   const PAGE_WIDTH = 1000;
   const PAGE_HEIGHT = 1415;
+
+  const { exportVideo, isExportingVideo } = useVideoExport();  // ✅ Add this
+
 
   useEffect(() => {
     let mounted = true;
@@ -665,51 +670,26 @@ export default function CreateMagazinePage() {
       return;
     }
 
-    setIsGenerating(true);
+    setIsGenerating(true);  // Keep your existing loading state
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-
       if (!user) {
         toast.error('Sign in required');
         return;
       }
 
-      const pageUrls = templatePages.map(
-        (pg) =>
-          document.getElementById(`page-${pg.page_number}`)?.querySelector('img')?.src ||
-          buildTemplatePageUrl(template.slug, pg.page_number)
-      );
+      // Call the hook (replaces all your manual logic!)
+      await exportVideo(templatePages, template, user.id);
 
-      const res = await fetch('/api/export-video', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pages: pageUrls,
-          userName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'user',
-          templateName: template.name,
-          userId: user.id,
-          templateId: template.id,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error);
-
-      const a = document.createElement('a');
-      a.href = data.url;
-      a.download = '';
-      a.click();
-
-      toast.success('Video exported successfully');
     } catch (err) {
       console.error(err);
       toast.error('Failed to export video');
     } finally {
-      setIsGenerating(false);
+      setIsGenerating(false);  // Keep your existing cleanup
     }
   };
+
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
@@ -1086,6 +1066,18 @@ export default function CreateMagazinePage() {
           <Download className="h-4 w-4 mr-2" />
           Export PDF
         </Button>
+
+         {/* ✅ NEW Video button */}
+        <Button 
+          variant="gold" 
+          size="sm" 
+          onClick={handleExportVideo} 
+          disabled={isGenerating || isExportingVideo || templatePages.length === 0}
+        >
+          <Sparkles className="h-4 w-4 mr-2" />
+          Export Video
+        </Button>
+        
       </div>
     </div>
   );
