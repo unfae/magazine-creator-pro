@@ -70,7 +70,7 @@ export function useVideoExport() {
         }
         
         if (data.response?.status === 'failed') {
-            toast.error('Render failed (check images URLs)');
+            toast.error('Render failed ${data.response.error}');
             return;
         }
         

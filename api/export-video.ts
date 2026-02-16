@@ -1,38 +1,31 @@
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req: any, res: any) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
   try {
-    const { pages, userId, templateName, templateId } = req.body;
+    const { pages, userId, templateName } = req.body;
 
-    if (!pages || !Array.isArray(pages) || pages.length === 0) {
-      return res.status(400).json({ error: 'No pages' });
-    }
+    if (!pages?.length) return res.status(400).json({ error: 'No pages' });
 
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // Test first image loads
+    const testImg = new Image();
+    testImg.src = pages[0];
+    await new Promise(r => testImg.onload = r);
 
-    const SHOTSTACK_API_KEY = process.env.SHOTSTACK_API_KEY!;
-    
-    // ✅ OFFICIAL SANDBOX ENDPOINT from Shotstack docs
-    const SHOTSTACK_URL = 'https://api.shotstack.io/stage/render';
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    const API_KEY = process.env.SHOTSTACK_API_KEY!;
 
-    const clips = pages.map((src: string, i: number) => ({
-      asset: { type: 'image', src },
-      start: i * 3,
+    const clips = pages.slice(0, 8).map((src, i) => ({
+      asset: { type: 'image', src },  // ✅ Public CORS image
+      start: i * 3,                  // ✅ Number!
       length: 3,
-      transition: { in: 'fade', out: 'fade' }
+      effect: 'fadeInFadeOut'        // ✅ Valid effect
     }));
 
     const payload = {
       timeline: {
-        tracks: [{ clips }],
-        background: '#000000'
+        tracks: [{ clips }]
       },
       output: {
         format: 'mp4',
@@ -40,24 +33,23 @@ export default async function handler(req: any, res: any) {
       }
     };
 
-    const response = await fetch(SHOTSTACK_URL, {
+    const response = await fetch('https://api.shotstack.io/stage/render', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': SHOTSTACK_API_KEY
+        'x-api-key': API_KEY
       },
       body: JSON.stringify(payload)
     });
 
-    const data = await response.text();
+    const data = await response.json();
     
-    if (!response.ok) {
-      console.error('SHOTSTACK ERROR:', data);
-      return res.status(500).json({ error: data });
+    if (!response.ok || !data.success) {
+      console.error('Shotstack:', data);
+      return res.status(400).json({ error: data.message || 'Validation failed' });
     }
 
-    const result = JSON.parse(data);
-    const renderId = result.response.id;  // Shotstack wraps in "response"
+    const renderId = data.response.id;
 
     await supabase.from('exported_videos_log').insert({
       user_id: userId,
@@ -65,14 +57,14 @@ export default async function handler(req: any, res: any) {
       render_id: renderId
     });
 
-    res.status(202).json({
+    res.json({
       success: true,
       renderId,
       statusUrl: `https://api.shotstack.io/stage/render/${renderId}`
     });
 
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
   }
 }
