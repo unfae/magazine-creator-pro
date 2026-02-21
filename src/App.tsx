@@ -21,6 +21,7 @@ import CheckEmailPage from "@/pages/CheckEmailPage";
 import { AuthProvider } from '@/context/AuthContext';
 import PageJsonGenerator from "@/pages/PageJsonGenerator";
 import TemplatePaymentCallbackPage from "@/pages/TemplatePaymentCallbackPage";
+import FAQsPage from "@/pages/FAQsPage";
 
 
 
@@ -46,6 +47,7 @@ const App = () => (
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/templates" element={<TemplatesPage />} />
+              <Route path="/faqs" element={<FAQsPage />} />
               <Route path="/page-json-generator" element={<PageJsonGenerator />} />
 
               {/* Authenticated */}
