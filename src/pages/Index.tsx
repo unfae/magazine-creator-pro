@@ -149,7 +149,10 @@ export default function Index() {
 
       <TipsSection />
 
-      <FAQSection />
+      {/* FAQ section */}
+      <div className="mt-20">
+        <FAQSection />
+      </div>
 
       {/* CTA */}
       <section className="py-20">

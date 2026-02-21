@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { TemplateCard } from '@/components/templates/TemplateCard';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+//import { FAQSection } from '@/components/FAQSection';
 
 const categories = ['All', 'Fashion', 'Travel', 'Family', 'Memories', 'Wedding', 'Faith'] as const;
 
@@ -134,10 +135,7 @@ export default function TemplatesPage() {
         </div>
       )}
 
-      {/* FAQ section */}
-      <div className="mt-20">
-        <FAQSection />
-      </div>
+      
     </div>
   );
 }
