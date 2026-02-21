@@ -1,23 +1,23 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, User, BookOpen, Settings, HelpCircle } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 
 const authNav = [
-  { label: 'Templates', href: '/templates', icon: BookOpen },
-  { label: 'My Magazines', href: '/magazines', icon: BookOpen },
-  { label: 'Profile', href: '/profile', icon: User },
-  { label: 'Settings', href: '/settings', icon: Settings },
-  { label: 'FAQs', href: '/faqs', icon: HelpCircle },
+  { label: 'Templates', href: '/templates' },
+  { label: 'My Magazines', href: '/magazines' },
+  { label: 'Profile', href: '/profile' },
+  { label: 'Settings', href: '/settings' },
+  { label: 'FAQs', href: '/faqs' },
 ];
 
 const publicNav = [
   { label: 'Templates', href: '/templates' },
   { label: 'Terms', href: '/terms' },
   { label: 'Privacy', href: '/privacy' },
-  { label: 'FAQs', href: '/faqs' }, // 👈 new
+  { label: 'FAQs', href: '/faqs' },
 ];
 
 export function Header() {
@@ -47,13 +47,12 @@ export function Header() {
               key={item.href}
               to={item.href}
               className={cn(
-                'px-4 py-2 text-sm rounded-md flex items-center gap-1 transition-colors',
+                'px-4 py-2 text-sm rounded-md transition-colors',
                 location.pathname === item.href
                   ? 'bg-secondary text-foreground'
                   : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
               )}
             >
-              {item.icon && <item.icon className="h-4 w-4" />}
               {item.label}
             </Link>
           ))}
@@ -99,13 +98,12 @@ export function Header() {
                 to={item.href}
                 onClick={() => setIsMenuOpen(false)}
                 className={cn(
-                  'flex items-center gap-2 px-4 py-2 rounded-md transition-colors',
+                  'block px-4 py-2 rounded-md transition-colors',
                   location.pathname === item.href
                     ? 'bg-secondary text-foreground'
                     : 'hover:bg-secondary/50'
                 )}
               >
-                {item.icon && <item.icon className="h-5 w-5" />}
                 {item.label}
               </Link>
             ))}
