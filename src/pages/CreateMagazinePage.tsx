@@ -765,22 +765,50 @@ export default function CreateMagazinePage() {
 
     setIsGenerating(true);
 
+    const SUBTITLE = 'Kindly hold on briefly while your video is being prepared...';
+
+    // Progress state for this export run
     let progress = 0;
-    const toastId = toast.loading(
-      `Generating Video... ${progress}%\n\nKindly hold on briefly while your video is being prepared...`,
-      { position: 'top-left', duration: 0 }
-    );
+
+    // Create ONE persistent toast (this is the only toast we will ever update)
+    const toastId = toast.loading(`Generating Video... ${progress}%`, {
+      position: 'top-left',
+      duration: Infinity,
+      description: SUBTITLE,
+    });
+
+    // Smooth ticking 0 → 45 (so user sees 0,1,2,3... immediately)
+    let stopTick = false;
+    const tick = setInterval(() => {
+      if (stopTick) return;
+
+      // cap at 45% until page rendering completes
+      progress = Math.min(progress + 1, 45);
+
+      toast.loading(`Generating Video... ${progress}%`, {
+        id: toastId,
+        position: 'top-left',
+        duration: Infinity,
+        description: SUBTITLE,
+      });
+    }, 120);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error(
-          `Generating Video... ${progress}%\n\nSign in required.`,
-          { id: toastId, position: 'top-left' }
-        );
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        stopTick = true;
+        clearInterval(tick);
+
+        toast.error(`Generating Video... ${progress}%`, {
+          id: toastId,
+          position: 'top-left',
+          duration: Infinity,
+          description: 'Sign in required.',
+        });
         return;
       }
 
+      // Render + upload composed page images to Supabase
       const maxPages = Math.min(templatePages.length, 8);
       const renderedUrls: (string | null)[] = [];
 
@@ -788,33 +816,52 @@ export default function CreateMagazinePage() {
         const pg = templatePages[i];
         const url = await renderPageToImageUrl(pg);
         renderedUrls.push(url);
-
-        // Simple: map pages to 0–50% linearly
-        progress = Math.round(((i + 1) / maxPages) * 50);
-        toast.loading(
-          `Generating Video... ${progress}%\n\nKindly hold on briefly while your video is being prepared...`,
-          { id: toastId, position: 'top-left', duration: 0 }
-        );
       }
 
       const pageUrls = renderedUrls.filter((u): u is string => !!u);
-      if (!pageUrls.length) {
-        toast.error(
-          `Generating Video... ${progress}%\n\nFailed to render magazine pages.`,
-          { id: toastId, position: 'top-left' }
-        );
+
+      if (pageUrls.length === 0) {
+        stopTick = true;
+        clearInterval(tick);
+
+        toast.error(`Generating Video... ${progress}%`, {
+          id: toastId,
+          position: 'top-left',
+          duration: Infinity,
+          description: 'Failed to prepare pages. Please try again.',
+        });
         return;
       }
 
-      // Continue from current progress (e.g. ~50)
+      // Stop page ticking, jump to 50% for the Shotstack phase
+      stopTick = true;
+      clearInterval(tick);
+
+      progress = 50;
+      toast.loading(`Generating Video... ${progress}%`, {
+        id: toastId,
+        position: 'top-left',
+        duration: Infinity,
+        description: SUBTITLE,
+      });
+
+      // Hand off to Shotstack (IMPORTANT: pass toastId + current progress)
       await exportVideo(pageUrls, template, user.id, toastId, progress);
     } catch (err) {
       console.error(err);
-      toast.error(
-        `Generating Video... ${progress}%\n\nVideo export failed.`,
-        { id: toastId, position: 'top-left' }
-      );
+      stopTick = true;
+      clearInterval(tick);
+
+      toast.error(`Generating Video... ${progress}%`, {
+        id: toastId,
+        position: 'top-left',
+        duration: Infinity,
+        description: 'Video export failed. Please try again.',
+      });
     } finally {
+      // Ensure interval is always cleared
+      stopTick = true;
+      clearInterval(tick);
       setIsGenerating(false);
     }
   };

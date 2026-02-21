@@ -1,10 +1,43 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+const SUBTITLE = 'Kindly hold on briefly while your video is being prepared...';
+
+function setLoadingToast(toastId: string | number, progress: number) {
+  toast.loading(`Generating Video... ${progress}%`, {
+    id: toastId,
+    position: 'top-left',
+    duration: Infinity,
+    description: SUBTITLE,
+  });
+}
+
+function setErrorToast(toastId: string | number, progress: number, message: string) {
+  toast.error(`Generating Video... ${progress}%`, {
+    id: toastId,
+    position: 'top-left',
+    duration: Infinity,
+    description: message,
+  });
+}
+
+function setSuccessToast(toastId: string | number, videoUrl: string) {
+  toast.success(`Generating Video... 100%`, {
+    id: toastId,
+    position: 'top-left',
+    duration: Infinity,
+    description: SUBTITLE,
+    action: {
+      label: 'Open Video',
+      onClick: () => window.open(videoUrl, '_blank'),
+    },
+  });
+}
+
 export function useVideoExport() {
   const [isExportingVideo, setIsExportingVideo] = useState(false);
 
-  // Accept toastId and startProgress so we keep a single toast
+  // NOTE: toastId is created outside (in handleExportVideo) so we never open a second toast.
   const exportVideo = async (
     pageUrls: string[],
     template: any,
@@ -13,21 +46,15 @@ export function useVideoExport() {
     startProgress: number = 50
   ) => {
     if (!pageUrls.length) {
-      toast.error('No pages to export', { id: toastId });
+      setErrorToast(toastId, startProgress, 'No pages to export.');
       return;
     }
 
     setIsExportingVideo(true);
 
-    let progress = startProgress;
-
-    // Ensure toast is in a known state at handoff
-    toast.loading(
-      `Generating Video... ${progress}%\n\nKindly hold on briefly while your video is being prepared...`,
-      { id: toastId, position: 'top-left', duration: 0 }
-    );
-
     try {
+      setLoadingToast(toastId, startProgress);
+
       const res = await fetch('/api/export-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -42,83 +69,59 @@ export function useVideoExport() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Export failed');
 
-      await pollVideoStatus(data.renderId, toastId, progress);
+      await pollVideoStatus(data.renderId, toastId, startProgress);
     } catch (err: any) {
       console.error(err);
-      toast.error(
-        `Generating Video... ${progress}%\n\n${err.message || 'Video export failed'}`,
-        { id: toastId, position: 'top-left' }
-      );
+      setErrorToast(toastId, startProgress, err?.message || 'Video export failed.');
     } finally {
       setIsExportingVideo(false);
     }
   };
 
-  const pollVideoStatus = async (
-    renderId: string,
-    toastId: string | number,
-    currentProgress: number
-  ) => {
-    let progress = currentProgress;
+  const pollVideoStatus = async (renderId: string, toastId: string | number, startProgress: number) => {
+    let progress = Math.max(0, Math.min(99, startProgress));
+    let stopTick = false;
 
-    const bumpProgress = () => {
-      progress = Math.min(progress + 1, 99); // 1% steps up to 99
-      toast.loading(
-        `Generating Video... ${progress}%\n\nKindly hold on briefly while your video is being prepared...`,
-        { id: toastId, position: 'top-left', duration: 0 }
-      );
+    // Smooth +1% ticking up to 99 while polling happens in the background.
+    const tick = setInterval(() => {
+      if (stopTick) return;
+      progress = Math.min(progress + 1, 99);
+      setLoadingToast(toastId, progress);
+    }, 350);
+
+    const stop = () => {
+      stopTick = true;
+      clearInterval(tick);
     };
 
     const poll = async () => {
       try {
         const res = await fetch(`/api/video-status?renderId=${encodeURIComponent(renderId)}`);
         const data = await res.json();
-        console.log('Poll status:', data);
 
         if (!res.ok) {
-          toast.error(
-            `Generating Video... ${progress}%\n\nVideo status check failed. Please try again later.`,
-            { id: toastId, position: 'top-left' }
-          );
+          stop();
+          setErrorToast(toastId, progress, 'Video status check failed. Please try again.');
           return;
         }
 
         const status = data.response?.status;
 
         if (status === 'done') {
-          const videoUrl = data.response.url;
-
-          // Final state: 100% with "Open Video" button (as toast action)
-          toast.success(
-            `Generating Video... 100%\n\nKindly hold on briefly while your video is being prepared...`,
-            {
-              id: toastId,
-              position: 'top-left',
-              duration: 0,
-              action: {
-                label: 'Open Video',
-                onClick: () => {
-                  window.open(videoUrl, '_blank');
-                },
-              },
-            }
-          );
+          stop();
+          setSuccessToast(toastId, data.response.url);
           return;
         }
 
         if (status === 'failed') {
-          toast.error(
-            `Generating Video... ${progress}%\n\n${data.response.error || 'Video render failed'}`,
-            { id: toastId, position: 'top-left' }
-          );
+          stop();
+          setErrorToast(toastId, progress, data.response?.error || 'Video render failed.');
           return;
         }
 
-        bumpProgress();
         setTimeout(poll, 3000);
       } catch (err) {
         console.error('Status poll failed:', err);
-        bumpProgress();
         setTimeout(poll, 3000);
       }
     };
