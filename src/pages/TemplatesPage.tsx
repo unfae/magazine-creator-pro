@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { TemplateCard } from '@/components/templates/TemplateCard';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
-//import { FAQSection } from '@/components/FAQSection';
 
 const categories = ['All', 'Fashion', 'Travel', 'Family', 'Memories', 'Wedding', 'Faith'] as const;
 
@@ -63,9 +62,9 @@ export default function TemplatesPage() {
         </p>
       </div>
 
-      {/* Search bar */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-center mb-8">
-        <div className="relative w-full sm:max-w-md">
+      {/* Search bar (always on top) */}
+      <div className="mb-8 flex justify-center">
+        <div className="relative w-full max-w-md">
           <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
             <svg
               className="h-4 w-4"
@@ -91,7 +90,10 @@ export default function TemplatesPage() {
             className="block w-full rounded-lg border border-input bg-background px-10 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
           />
         </div>
+      </div>
 
+      {/* Category filters (below search bar) */}
+      <div className="flex justify-center mb-8">
         <div className="flex flex-wrap justify-center gap-2">
           {categories.map((category) => (
             <button
@@ -101,10 +103,10 @@ export default function TemplatesPage() {
                 if (search) setSearch('');
               }}
               className={cn(
-                "px-4 py-2 text-sm font-medium rounded-full transition-all duration-200",
+                'px-4 py-2 text-sm font-medium rounded-full transition-all duration-200',
                 selectedCategory === category
-                  ? "bg-foreground text-background"
-                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  ? 'bg-foreground text-background'
+                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
               )}
             >
               {category}
@@ -134,8 +136,6 @@ export default function TemplatesPage() {
           <p className="text-muted-foreground">No templates match your search or category.</p>
         </div>
       )}
-
-      
     </div>
   );
 }
