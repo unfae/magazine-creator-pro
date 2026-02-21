@@ -35,7 +35,7 @@ function setSuccessToast(toastId: string | number, videoUrl: string) {
     // ✅ Put action under text + make it bigger
     className: 'flex-col items-start gap-3', // action goes to bottom when column layout [web:132]
     classNames: {
-      actionButton: '!h-10 w-[50%] self-center !justify-center !text-sm !font-semibold',
+      actionButton: '!h-10 w-[50%] !mr-auto !ml-0 !justify-center !text-sm !font-semibold',
     },
   });
 }
