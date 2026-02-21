@@ -675,37 +675,30 @@ export default function CreateMagazinePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return toast.error('Sign in required');
 
-      // ✅ RENDERED MAGAZINE PAGES (text + layouts)
-      const pageUrls = await Promise.all(
-        templatePages.slice(0, 10).map(async (pg) => {
-          const pageNum = pg.page_number || pg.pagenumber;
-          const pageEl = document.getElementById(`page-${pageNum}`);
-          
-          if (!pageEl) return null;
-          
-          const canvas = await html2canvas(pageEl, {
-            scale: 1.5,  // Crisp
-            useCORS: true,
-            width: 1000,
-            height: 1416
-          });
-          
-          return canvas.toDataURL('image/png');
-        })
-      ).then(urls => urls.filter(Boolean));
+      // ✅ RENDERED TEMPLATE + USER IMAGES (small URLs)
+      const pageUrls = templatePages.slice(0, 8).map(pg => {
+        const pageNum = pg.page_number || pg.pagenumber;
+        
+        // Priority 1: Rendered template page
+        const templateUrl = buildTemplatePageUrl(template.slug, pageNum);
+        
+        // Priority 2: DOM img (user uploads)
+        const pageEl = document.getElementById(`page-${pageNum}`);
+        const userImg = pageEl?.querySelector('[data-image-slot] img')?.src;
+        
+        return userImg || templateUrl; // ✅ Compact URLs
+      }).filter(Boolean);
 
-      if (pageUrls.length === 0) return toast.error('No pages rendered');
-
-      console.log('📱 Magazine screenshots:', pageUrls.length);
+      console.log('📱 Video pages:', pageUrls.length);
       await exportVideo(pageUrls, template, user.id);
 
     } catch (err) {
-      console.error(err);
       toast.error('Video export failed');
     } finally {
       setIsGenerating(false);
     }
   };
+
 
 
 
