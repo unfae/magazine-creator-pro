@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { TemplateCard } from '@/components/templates/TemplateCard';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import { Search } from 'lucide-react';
 
 const categories = ['All', 'Fashion', 'Travel', 'Family', 'Memories', 'Wedding', 'Faith'] as const;
 
@@ -65,29 +66,19 @@ export default function TemplatesPage() {
       {/* Search bar (always on top) */}
       <div className="mb-8 flex justify-center">
         <div className="relative w-full max-w-md">
-          <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
-            <svg
-              className="h-4 w-4"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          </span>
+          <Search
+            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
 
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search templates..."
-            className="block w-full rounded-lg border border-input bg-background px-10 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+            className="w-full rounded-lg border border-input bg-background px-10 py-2 text-sm shadow-sm 
+                       placeholder:text-muted-foreground/80 
+                       focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
           />
         </div>
       </div>
