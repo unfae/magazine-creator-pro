@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { TipsSection } from '@/components/TipsSection';
+import { FAQSection } from '@/components/FAQSection';
 
 
 
@@ -147,6 +148,8 @@ export default function Index() {
       </section>
 
       <TipsSection />
+
+      <FAQSection />
 
       {/* CTA */}
       <section className="py-20">
