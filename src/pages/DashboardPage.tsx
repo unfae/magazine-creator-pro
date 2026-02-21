@@ -7,6 +7,8 @@ import { templates, sampleMagazines } from '@/data/mockData';
 import { Plus, ArrowRight, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getFeaturedTemplates } from '@/data/featured_templates';
+import { TipsSection } from '@/components/TipsSection';
+import { FAQSection } from '@/components/FAQSection';
 
 export default function DashboardPage() {
   const [featuredTemplates, setFeaturedTemplates] = useState([]);
@@ -72,6 +74,14 @@ export default function DashboardPage() {
           ))}
         </div>
       </section>
+
+      <TipsSection />
+
+      {/* FAQ section */}
+      <div className="mt-20">
+        <FAQSection />
+      </div>
+
     </div>
   );
 }
