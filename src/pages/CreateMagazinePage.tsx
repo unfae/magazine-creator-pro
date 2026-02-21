@@ -679,28 +679,52 @@ export default function CreateMagazinePage() {
         return;
       }
 
-      // YOUR EXISTING WORKING LOGIC (handles page_number, backgrounds, etc.)
-      const pageUrls = templatePages.map(
-        (pg) =>
-          document.getElementById(`page-${pg.pagenumber}`)?.querySelector('img')?.src ||
-          buildTemplatePageUrl(template.slug, pg.pagenumber)
-      ).filter(Boolean);
+      // ✅ FIXED: Handles page_number AND pagenumber + debug
+      console.log('📋 templatePages sample:', templatePages.slice(0, 2).map(pg => ({
+        id: pg.id,
+        page_number: pg.page_number,
+        pagenumber: pg.pagenumber
+      })));
+
+      const pageUrls = templatePages
+        .map((pg: any) => {
+          // ✅ DUAL FALLBACK - fixes undefined.png
+          const pageNum = pg.page_number || pg.pagenumber;
+          
+          if (!pageNum) {
+            console.warn('⚠️ Skipping invalid page:', pg.id);
+            return null;
+          }
+
+          const elementId = `page-${pageNum}`;
+          const element = document.getElementById(elementId);
+          const imgSrc = element?.querySelector('img')?.src;
+
+          const url = imgSrc || buildTemplatePageUrl(template.slug, pageNum);
+          console.log(`Page ${pageNum}:`, url);
+          
+          return url;
+        })
+        .filter(Boolean); // Remove null/empty
+
+      console.log('🚀 Final URLs count:', pageUrls.length, pageUrls.slice(0, 2));
 
       if (pageUrls.length === 0) {
-        toast.error('No valid page images found');
+        toast.error('No valid page images (check console)');
         return;
       }
 
-      // Pass YOUR pageUrls to hook (handles API + polling)
+      // Call hook with working URLs
       await exportVideo(pageUrls, template, user.id);
 
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('Export error:', err);
       toast.error('Failed to export video');
     } finally {
       setIsGenerating(false);
     }
   };
+
 
 
 
