@@ -5,12 +5,17 @@ export function useVideoExport() {
   const [isExportingVideo, setIsExportingVideo] = useState(false);
 
   const exportVideo = async (pageUrls: string[], template: any, userId: string) => {
-    if (pageUrls.length === 0) {
+    if (!pageUrls.length) {
       toast.error('No pages to export');
       return;
     }
 
     setIsExportingVideo(true);
+
+    // Single toast for the whole flow
+    const toastId = toast.loading('Preparing video export…', {
+      position: 'top-left',
+    });
 
     try {
       const res = await fetch('/api/export-video', {
@@ -27,67 +32,68 @@ export function useVideoExport() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Export failed');
 
-      toast.success('Video rendering started! (3-10s)');
-      
-      // Auto-poll status until ready
-      pollVideoStatus(data.statusUrl, data.renderId);
-      
+      // Update toast: pages exported, video rendering
+      toast.loading('Rendering video…', {
+        id: toastId,
+        position: 'top-left',
+      });
+
+      // Poll Shotstack until done
+      await pollVideoStatus(data.statusUrl, data.renderId, toastId);
     } catch (err: any) {
-      console.error('Video export error:', err);
-      toast.error(err.message || 'Video export failed');
+      console.error(err);
+      toast.error(err.message || 'Video export failed', { id: toastId });
     } finally {
       setIsExportingVideo(false);
     }
   };
 
-    const pollVideoStatus = async (statusUrl: string, renderId: string) => {
-    // Shotstack status endpoint (GET /{renderId})
-    const pollUrl = `https://api.shotstack.io/stage/render/${renderId}`;
-    
+  const pollVideoStatus = async (statusUrl: string, renderId: string, toastId: string | number) => {
+    const pollUrl = statusUrl; // already /stage/render/{id}
+
     const poll = async () => {
-        try {
+      try {
         const res = await fetch(pollUrl, {
-            headers: {
-            'x-api-key': 'MwuTPl8lVltu14HCnLVwGGAJHiBLAVeST54dkwhB'
-            }
+          headers: {
+            'x-api-key': process.env.NEXT_PUBLIC_SHOTSTACK_API_KEY || '', // or hard-code sandbox key if needed
+          },
         });
-        
+
         const data = await res.json();
-        
-        console.log('Poll status:', data); // DEBUG
-        
+        console.log('Poll status:', data);
+
         if (data.response?.status === 'done') {
-            const videoUrl = data.response.url;
-            toast.success('✅ Video Ready!', {
+          const videoUrl = data.response.url;
+
+          toast.success('Video ready!', {
+            id: toastId,
             action: {
-                label: 'Download',
-                onClick: () => {
+              label: 'Open',
+              onClick: () => {
                 window.open(videoUrl, '_blank');
-                }
-            }
-            });
-            return;
+              },
+            },
+          });
+          return;
         }
-        
+
         if (data.response?.status === 'failed') {
-            toast.error('Render failed ${data.response.error}');
-            return;
+          toast.error(`Video render failed: ${data.response.error || 'Unknown error'}`, {
+            id: toastId,
+          });
+          return;
         }
-        
+
         // Still processing
         setTimeout(poll, 4000);
-        
-        } catch (err) {
-        console.error('Poll error:', err);
-        }
+      } catch (err) {
+        console.error('Status poll failed:', err);
+        setTimeout(poll, 4000);
+      }
     };
-    
+
     poll();
-    };
-
-
-  return { 
-    exportVideo, 
-    isExportingVideo 
   };
+
+  return { exportVideo, isExportingVideo };
 }

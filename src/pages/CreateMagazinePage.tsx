@@ -765,35 +765,47 @@ export default function CreateMagazinePage() {
 
     setIsGenerating(true);
 
+    // One toast id reused through steps
+    const toastId = toast.loading('Rendering magazine pages… 0%', {
+      position: 'top-left',
+    });
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error('Sign in required');
+        toast.error('Sign in required', { id: toastId });
         return;
       }
 
-      // Render first 8 pages as full magazine images
-      const renderedUrls = await Promise.all(
-        templatePages.slice(0, 8).map((pg) => renderPageToImageUrl(pg))
-      );
+      const maxPages = Math.min(templatePages.length, 8);
+      const renderedUrls: (string | null)[] = [];
+
+      for (let i = 0; i < maxPages; i++) {
+        const pg = templatePages[i];
+        const url = await renderPageToImageUrl(pg);
+        renderedUrls.push(url);
+
+        const pct = Math.round(((i + 1) / maxPages) * 100);
+        toast.loading(`Rendering magazine pages… ${pct}%`, { id: toastId });
+      }
 
       const pageUrls = renderedUrls.filter((u): u is string => !!u);
 
-      if (pageUrls.length === 0) {
-        toast.error('Failed to render magazine pages for video');
+      if (!pageUrls.length) {
+        toast.error('Failed to render magazine pages for video', { id: toastId });
         return;
       }
 
-      console.log('🎞 Rendered page URLs for video:', pageUrls);
-
+      // Let the hook continue the toast lifecycle into "Rendering video…" and "Video ready!"
       await exportVideo(pageUrls, template, user.id);
     } catch (err) {
       console.error(err);
-      toast.error('Video export failed');
+      toast.error('Video export failed', { id: toastId });
     } finally {
       setIsGenerating(false);
     }
   };
+
 
 
 

@@ -28,8 +28,8 @@ export default async function handler(req: any, res: any) {
       type: 'image',
       src: src.trim()
     },
-    start: index * 4,
-    length: 4,
+    start: index * 3,
+    length: 3,
     // Clip-level fit, not the video size
     fit: 'contain',
     position: 'center',
