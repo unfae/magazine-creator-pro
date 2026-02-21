@@ -1,66 +1,117 @@
 import { createClient } from '@supabase/supabase-js';
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+export default async function handler(req: any, res: any) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   try {
-    const { pages, userId, templateName } = req.body;
-    
-    console.log('Images:', pages.length, pages[0]);
+    const { pages, userId, templateName, templateId } = req.body;
 
-    if (!pages?.length) return res.status(400).json({ error: 'No images' });
+    console.log('📱 Magazine export:', {
+      pageCount: pages?.length || 0,
+      firstPage: pages?.[0]?.substring(0, 50) + '...'
+    });
 
-    const API_KEY = process.env.SHOTSTACK_API_KEY!;
-    const SHOTSTACK_URL = 'https://api.shotstack.io/stage/render';
-
-    // Validate 1st image
-    const headRes = await fetch(pages[0], { method: 'HEAD' });
-    if (!headRes.ok) {
-      return res.status(400).json({ error: `Image 404/403: ${pages[0]}` });
+    if (!pages || !Array.isArray(pages) || pages.length === 0) {
+      return res.status(400).json({ error: 'No pages provided' });
     }
 
-    const clips = pages.slice(0, 3).map((src, i) => ({
-      asset: { type: "image", src: src.trim() },
-      start: i * 4,
-      length: 4,
-      fit: "cover",
-      position: "center"
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const SHOTSTACK_API_KEY = process.env.SHOTSTACK_API_KEY!;
+    if (!SHOTSTACK_API_KEY) {
+      return res.status(500).json({ error: 'SHOTSTACK_API_KEY missing' });
+    }
+
+    const SHOTSTACK_URL = 'https://api.shotstack.io/stage/render';
+
+    // ✅ MAGAZINE PORTAIT SPECS (1000x1416)
+    const MAGAZINE_WIDTH = 1000;
+    const MAGAZINE_HEIGHT = 1416;
+    const PAGE_DURATION = 4; // seconds per page
+
+    const clips = pages.slice(0, 12).map((src: string, index: number) => ({
+      asset: {
+        type: 'image',
+        src: src.trim()
+      },
+      start: index * PAGE_DURATION,
+      length: PAGE_DURATION,
+      // ✅ PERFECT FIT (no stretch!)
+      width: MAGAZINE_WIDTH,
+      height: MAGAZINE_HEIGHT,
+      position: 'center',
+      fit: 'contain',
+      // ✅ RUNWAY TRANSITIONS
+      transition: {
+        in: 'fade',
+        out: 'fade'
+      },
+      effect: 'zoomInSlow' // Subtle movement
     }));
 
     const payload = {
-      timeline: { tracks: [{ clips }] },
-      output: { format: "mp4", resolution: "sd", fps: 30 }
+      timeline: {
+        soundtrack: null, // Silent (add music later)
+        background: '#000000',
+        tracks: [{
+          clips: clips
+        }]
+      },
+      output: {
+        format: 'mp4',
+        resolution: 'hd', // Crisp
+        fps: 30
+      }
     };
+
+    console.log('🎬 Sending to Shotstack...');
 
     const response = await fetch(SHOTSTACK_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': API_KEY
+        'x-api-key': SHOTSTACK_API_KEY
       },
       body: JSON.stringify(payload)
     });
 
-    const result = await response.json();
-    console.log('RESULT:', result);
+    const shotstackData = await response.json();
+    console.log('🎥 Shotstack result:', shotstackData);
 
-    if (!result.success) {
-      return res.status(400).json({ error: result.message, details: result.response?.errors });
+    if (!response.ok || !shotstackData.success) {
+      console.error('Shotstack errors:', shotstackData.response?.errors);
+      return res.status(400).json({
+        error: shotstackData.message || 'Validation failed',
+        details: shotstackData.response?.errors
+      });
     }
 
-    const renderId = result.response.id;
+    const renderId = shotstackData.response.id;
 
-    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    // Log for dashboard
     await supabase.from('exported_videos_log').insert({
       user_id: userId,
       template_name: templateName,
-      render_id: renderId
+      template_id: templateId || null,
+      shotstack_render_id: renderId,
+      status: 'queued',
+      page_count: pages.length
     });
 
-    res.json({ success: true, renderId, statusUrl: `https://api.shotstack.io/stage/render/${renderId}` });
+    res.status(202).json({
+      success: true,
+      message: `Rendering ${pages.length} magazine pages...`,
+      renderId,
+      statusUrl: `https://api.shotstack.io/stage/render/${renderId}`
+    });
 
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
+  } catch (error: any) {
+    console.error('❌ Export error:', error);
+    res.status(500).json({ error: error.message });
   }
 }

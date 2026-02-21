@@ -14,6 +14,8 @@ import { getAllowedFontsCached, ensureGoogleFontsLoaded } from '@/lib/fontLoader
 import { BulkTextEdit } from '@/components/BulkTextEdit';
 import { scheduleExportAssetsForDeletion } from '@/lib/scheduleExportAssetsForDeletion';
 import { useVideoExport } from '@/hooks/useVideoExport';  // ✅ Add this
+import html2canvas from 'html2canvas';
+
 
 
 type TextBlock = {
@@ -665,65 +667,46 @@ export default function CreateMagazinePage() {
   };
 
   const handleExportVideo = async () => {
-    if (templatePages.length === 0) {
-      toast.error('No pages to export');
-      return;
-    }
+    if (templatePages.length === 0) return toast.error('No pages');
 
     setIsGenerating(true);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error('Sign in required');
-        return;
-      }
+      if (!user) return toast.error('Sign in required');
 
-      // ✅ FIXED: Handles page_number AND pagenumber + debug
-      console.log('📋 templatePages sample:', templatePages.slice(0, 2).map(pg => ({
-        id: pg.id,
-        page_number: pg.page_number,
-        pagenumber: pg.pagenumber
-      })));
-
-      const pageUrls = templatePages
-        .map((pg: any) => {
-          // ✅ DUAL FALLBACK - fixes undefined.png
+      // ✅ RENDERED MAGAZINE PAGES (text + layouts)
+      const pageUrls = await Promise.all(
+        templatePages.slice(0, 10).map(async (pg) => {
           const pageNum = pg.page_number || pg.pagenumber;
+          const pageEl = document.getElementById(`page-${pageNum}`);
           
-          if (!pageNum) {
-            console.warn('⚠️ Skipping invalid page:', pg.id);
-            return null;
-          }
-
-          const elementId = `page-${pageNum}`;
-          const element = document.getElementById(elementId);
-          const imgSrc = element?.querySelector('img')?.src;
-
-          const url = imgSrc || buildTemplatePageUrl(template.slug, pageNum);
-          console.log(`Page ${pageNum}:`, url);
+          if (!pageEl) return null;
           
-          return url;
+          const canvas = await html2canvas(pageEl, {
+            scale: 1.5,  // Crisp
+            useCORS: true,
+            width: 1000,
+            height: 1416
+          });
+          
+          return canvas.toDataURL('image/png');
         })
-        .filter(Boolean); // Remove null/empty
+      ).then(urls => urls.filter(Boolean));
 
-      console.log('🚀 Final URLs count:', pageUrls.length, pageUrls.slice(0, 2));
+      if (pageUrls.length === 0) return toast.error('No pages rendered');
 
-      if (pageUrls.length === 0) {
-        toast.error('No valid page images (check console)');
-        return;
-      }
-
-      // Call hook with working URLs
+      console.log('📱 Magazine screenshots:', pageUrls.length);
       await exportVideo(pageUrls, template, user.id);
 
-    } catch (err: any) {
-      console.error('Export error:', err);
-      toast.error('Failed to export video');
+    } catch (err) {
+      console.error(err);
+      toast.error('Video export failed');
     } finally {
       setIsGenerating(false);
     }
   };
+
 
 
 
