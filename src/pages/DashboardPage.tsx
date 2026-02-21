@@ -78,7 +78,7 @@ export default function DashboardPage() {
       <TipsSection />
 
       {/* FAQ section */}
-      <div className="mt-4">
+      <div className="mt-2">
         <FAQSection />
       </div>
 

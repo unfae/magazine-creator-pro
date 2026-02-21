@@ -150,7 +150,7 @@ export default function Index() {
       <TipsSection />
 
       {/* FAQ section */}
-      <div className="mt-20">
+      <div className="mt-2">
         <FAQSection />
       </div>
 
