@@ -765,10 +765,10 @@ export default function CreateMagazinePage() {
 
     setIsGenerating(true);
 
-    // One toast id reused through steps
-    const toastId = toast.loading('Rendering magazine pages… 0%', {
-      position: 'top-left',
-    });
+    const toastId = toast.loading(
+      'Rendering magazine pages… 0%\n\nKindly hold on briefly, the video should be ready in a minute or two. Thank you.',
+      { position: 'top-left' }
+    );
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -785,18 +785,20 @@ export default function CreateMagazinePage() {
         const url = await renderPageToImageUrl(pg);
         renderedUrls.push(url);
 
-        const pct = Math.round(((i + 1) / maxPages) * 100);
-        toast.loading(`Rendering magazine pages… ${pct}%`, { id: toastId });
+        const pct = Math.round(((i + 1) / maxPages) * 50); // 0–50%
+        toast.loading(
+          `Rendering magazine pages… ${pct}%\n\nKindly hold on briefly, the video should be ready in a minute or two. Thank you.`,
+          { id: toastId, position: 'top-left' }
+        );
       }
 
       const pageUrls = renderedUrls.filter((u): u is string => !!u);
-
       if (!pageUrls.length) {
         toast.error('Failed to render magazine pages for video', { id: toastId });
         return;
       }
 
-      // Let the hook continue the toast lifecycle into "Rendering video…" and "Video ready!"
+      // Hand off to hook; it will take progress from ~50% → 100%
       await exportVideo(pageUrls, template, user.id);
     } catch (err) {
       console.error(err);
@@ -805,6 +807,7 @@ export default function CreateMagazinePage() {
       setIsGenerating(false);
     }
   };
+
 
 
 
