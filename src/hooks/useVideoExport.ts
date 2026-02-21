@@ -22,7 +22,7 @@ function setErrorToast(toastId: string | number, progress: number, message: stri
 }
 
 function setSuccessToast(toastId: string | number, videoUrl: string) {
-  toast.success(`Generating Video... 100%`, {
+  toast.success(`Video Generated...`, {
     id: toastId,
     position: 'top-left',
     duration: Infinity,
@@ -31,8 +31,15 @@ function setSuccessToast(toastId: string | number, videoUrl: string) {
       label: 'Open Video',
       onClick: () => window.open(videoUrl, '_blank'),
     },
+
+    // ✅ Put action under text + make it bigger
+    className: 'flex-col items-start gap-3', // action goes to bottom when column layout [web:132]
+    classNames: {
+      actionButton: '!h-10 w-full !justify-center !text-sm !font-semibold',
+    },
   });
 }
+
 
 export function useVideoExport() {
   const [isExportingVideo, setIsExportingVideo] = useState(false);

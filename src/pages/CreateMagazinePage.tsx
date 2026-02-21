@@ -791,7 +791,7 @@ export default function CreateMagazinePage() {
         duration: Infinity,
         description: SUBTITLE,
       });
-    }, 120);
+    }, 400);
 
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
