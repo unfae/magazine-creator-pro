@@ -666,8 +666,107 @@ export default function CreateMagazinePage() {
     }
   };
 
+
+
+    // Render a fully composed magazine page (background + user images + text) to JPEG in Supabase
+  const renderPageToImageUrl = async (pg: TemplatePage): Promise<string | null> => {
+    const PAGE_WIDTH = PAGE_WIDTH || 1000;
+    const PAGE_HEIGHT = PAGE_HEIGHT || 1415;
+
+    const original = document.getElementById(`page-${pg.page_number}`);
+    if (!original) return null;
+
+    // Clone the page DOM, same idea as PDF export
+    const clone = original.cloneNode(true) as HTMLElement;
+
+    // Replace <img> slots with background-image so html2canvas sees full image
+    clone.querySelectorAll('[data-image-slot="true"]').forEach((slotEl) => {
+      const slot = slotEl as HTMLElement;
+      const img = slot.querySelector('img') as HTMLImageElement | null;
+      if (!img || !img.src) return;
+
+      slot.style.backgroundImage = `url(${img.src})`;
+      slot.style.backgroundSize = 'cover';
+      slot.style.backgroundPosition = 'center';
+      slot.style.backgroundRepeat = 'no-repeat';
+      img.style.display = 'none';
+    });
+
+    // Remove UI controls (buttons, overlays)
+    clone.querySelectorAll('[data-ui="true"]').forEach((el) => el.remove());
+
+    // Make text blocks render correctly
+    clone.querySelectorAll('[data-text-block="true"]').forEach((el) => {
+      const t = el as HTMLElement;
+      t.style.overflow = 'visible';
+      t.style.boxSizing = 'border-box';
+      t.style.paddingBottom = '3px';
+    });
+
+    // Position off-screen for screenshot
+    clone.style.width = `${PAGE_WIDTH}px`;
+    clone.style.height = `${PAGE_HEIGHT}px`;
+    clone.style.transform = 'none';
+    clone.style.position = 'absolute';
+    clone.style.left = '-99999px';
+    clone.style.top = '0';
+
+    document.body.appendChild(clone);
+    await document.fonts.ready;
+
+    // Render to canvas
+    const canvas = await html2canvas(clone, {
+      scale: 1,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      imageTimeout: 30000,
+    });
+
+    document.body.removeChild(clone);
+
+    // Convert to JPEG blob (compact)
+    const blob: Blob | null = await new Promise((resolve) =>
+      canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.9)
+    );
+    if (!blob) return null;
+
+    // Upload to Supabase: generated-magazines/{email}/{template-name}/page-X.jpg
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const emailSafe = (user.email || 'user').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const templateSafe = (template.name || 'template').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
+    const filePath = `${emailSafe}/${templateSafe}/page-${pg.page_number}-${Date.now()}.jpg`;
+
+    const { data, error } = await supabase.storage
+      .from('generated-magazines')
+      .upload(filePath, blob, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (error || !data) {
+      console.error('Page upload error', error);
+      return null;
+    }
+
+    const publicUrl = supabase.storage
+      .from('generated-magazines')
+      .getPublicUrl(data.path).data.publicUrl;
+
+    return publicUrl || null;
+  };
+
+
+
+
+
   const handleExportVideo = async () => {
-    if (templatePages.length === 0) return toast.error('No pages');
+    if (templatePages.length === 0) {
+      toast.error('No pages to export');
+      return;
+    }
 
     setIsGenerating(true);
 
@@ -678,25 +777,23 @@ export default function CreateMagazinePage() {
         return;
       }
 
-      // Use the same logic as your preview for the page base image
-      const pageUrls = templatePages
-        .slice(0, 8) // keep a safe limit
-        .map((pg) => {
-          const pageNum = pg.page_number || (pg as any).pagenumber;
-          // Main magazine page image (with template art)
-          const bgUrl = pg.page_image_url || buildTemplatePageUrl(template.slug, pageNum);
-          return bgUrl;
-        })
-        .filter(Boolean);
+      // 1) Render each composed page to JPEG in generated-magazines bucket
+      const renderedUrls = await Promise.all(
+        templatePages.slice(0, 8).map((pg) => renderPageToImageUrl(pg))
+      );
+
+      const pageUrls = renderedUrls.filter((u): u is string => !!u);
 
       if (pageUrls.length === 0) {
-        toast.error('No valid page images found for video');
+        toast.error('Failed to render magazine pages for video');
         return;
       }
 
-      console.log('📱 Video page URLs:', pageUrls);
+      console.log('🎞 Rendered page URLs for video:', pageUrls);
 
+      // 2) Call the video export hook with rendered page URLs
       await exportVideo(pageUrls, template, user.id);
+
     } catch (err) {
       console.error(err);
       toast.error('Video export failed');
@@ -704,6 +801,7 @@ export default function CreateMagazinePage() {
       setIsGenerating(false);
     }
   };
+
 
 
 
