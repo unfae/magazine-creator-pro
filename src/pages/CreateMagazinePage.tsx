@@ -765,15 +765,19 @@ export default function CreateMagazinePage() {
 
     setIsGenerating(true);
 
-    const toastId = toast.loading(
-      'Rendering magazine pages… 0%\n\nKindly hold on briefly, the video should be ready in a minute or two. Thank you.',
-      { position: 'top-left' }
+    let progress = 0;
+    const toastId = toast.custom(
+      () => videoToastContent(progress, 'Rendering magazine pages…'),
+      { position: 'top-left', duration: 0 }
     );
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error('Sign in required', { id: toastId });
+        toast.custom(
+          () => videoToastContent(progress, 'Sign in required'),
+          { id: toastId, position: 'top-left' }
+        );
         return;
       }
 
@@ -785,28 +789,39 @@ export default function CreateMagazinePage() {
         const url = await renderPageToImageUrl(pg);
         renderedUrls.push(url);
 
-        const pct = Math.round(((i + 1) / maxPages) * 50); // 0–50%
-        toast.loading(
-          `Rendering magazine pages… ${pct}%\n\nKindly hold on briefly, the video should be ready in a minute or two. Thank you.`,
-          { id: toastId, position: 'top-left' }
-        );
+        const target = Math.round(((i + 1) / maxPages) * 50); // 0–50
+        while (progress < target) {
+          progress += 1;
+          toast.custom(
+            () => videoToastContent(progress, 'Rendering magazine pages…'),
+            { id: toastId, position: 'top-left', duration: 0 }
+          );
+          await new Promise((r) => setTimeout(r, 20));
+        }
       }
 
       const pageUrls = renderedUrls.filter((u): u is string => !!u);
       if (!pageUrls.length) {
-        toast.error('Failed to render magazine pages for video', { id: toastId });
+        toast.custom(
+          () => videoToastContent(progress, 'Failed to render magazine pages'),
+          { id: toastId, position: 'top-left' }
+        );
         return;
       }
 
-      // Hand off to hook; it will take progress from ~50% → 100%
-      await exportVideo(pageUrls, template, user.id);
+      // Continue from current progress (e.g. ~50)
+      await exportVideo(pageUrls, template, user.id, toastId, progress);
     } catch (err) {
       console.error(err);
-      toast.error('Video export failed', { id: toastId });
+      toast.custom(
+        () => videoToastContent(progress, 'Video export failed'),
+        { id: toastId, position: 'top-left' }
+      );
     } finally {
       setIsGenerating(false);
     }
   };
+
 
 
 
