@@ -1,21 +1,23 @@
-import { Link, useLocation } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Menu, X, User, BookOpen, Settings } from "lucide-react";
-import { useState } from "react";
-import { cn } from "@/lib/utils";
-import { useAuth } from "@/context/AuthContext";
+import { Link, useLocation } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Menu, X, User, BookOpen, Settings, HelpCircle } from 'lucide-react';
+import { useState } from 'react';
+import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
 
 const authNav = [
-  { label: "Templates", href: "/templates", icon: BookOpen },
-  { label: "My Magazines", href: "/magazines", icon: BookOpen },
-  { label: "Profile", href: "/profile", icon: User },
-  { label: "Settings", href: "/settings", icon: Settings },
+  { label: 'Templates', href: '/templates', icon: BookOpen },
+  { label: 'My Magazines', href: '/magazines', icon: BookOpen },
+  { label: 'Profile', href: '/profile', icon: User },
+  { label: 'Settings', href: '/settings', icon: Settings },
+  { label: 'FAQs', href: '/faqs', icon: HelpCircle },
 ];
 
 const publicNav = [
-  { label: "Templates", href: "/templates" },
-  { label: "Terms", href: "/terms" },
-  { label: "Privacy", href: "/privacy" },
+  { label: 'Templates', href: '/templates' },
+  { label: 'Terms', href: '/terms' },
+  { label: 'Privacy', href: '/privacy' },
+  { label: 'FAQs', href: '/faqs' }, // 👈 new
 ];
 
 export function Header() {
@@ -32,7 +34,7 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link
-          to={isAuthenticated ? "/dashboard" : "/"}
+          to={isAuthenticated ? '/dashboard' : '/'}
           className="font-serif text-2xl font-semibold"
         >
           Magzine<span className="text-gold">Maker</span>
@@ -45,12 +47,13 @@ export function Header() {
               key={item.href}
               to={item.href}
               className={cn(
-                "px-4 py-2 text-sm rounded-md transition-colors",
+                'px-4 py-2 text-sm rounded-md flex items-center gap-1 transition-colors',
                 location.pathname === item.href
-                  ? "bg-secondary text-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  ? 'bg-secondary text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
               )}
             >
+              {item.icon && <item.icon className="h-4 w-4" />}
               {item.label}
             </Link>
           ))}
@@ -96,12 +99,13 @@ export function Header() {
                 to={item.href}
                 onClick={() => setIsMenuOpen(false)}
                 className={cn(
-                  "block px-4 py-2 rounded-md transition-colors",
+                  'flex items-center gap-2 px-4 py-2 rounded-md transition-colors',
                   location.pathname === item.href
-                    ? "bg-secondary text-foreground"
-                    : "hover:bg-secondary/50"
+                    ? 'bg-secondary text-foreground'
+                    : 'hover:bg-secondary/50'
                 )}
               >
+                {item.icon && <item.icon className="h-5 w-5" />}
                 {item.label}
               </Link>
             ))}

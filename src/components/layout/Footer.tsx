@@ -9,6 +9,7 @@ export function Footer() {
         <div className="flex items-center gap-4">
           <Link to="/templates" className="hover:text-foreground">Templates</Link>
           <Link to="/terms" className="hover:text-foreground">Terms</Link>
+          <Link to="/faqs" className="hover:text-foreground">FAQs</Link>
           <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
         </div>
       </div>
