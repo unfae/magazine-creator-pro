@@ -1081,6 +1081,16 @@ export default function CreateMagazinePage() {
         </Button>
 
          {/* ✅ NEW Video button */}
+
+        <Button 
+          variant="gold" 
+          size="sm" 
+          onClick={handleExportVideo} 
+          disabled={isGenerating || isExportingVideo || templatePages.length === 0}
+        >
+          <Sparkles className="h-4 w-4 mr-2" />
+          Export Video
+        </Button> 
          
         
       </div>
@@ -1091,14 +1101,6 @@ export default function CreateMagazinePage() {
 
 /*
 
-<Button 
-          variant="gold" 
-          size="sm" 
-          onClick={handleExportVideo} 
-          disabled={isGenerating || isExportingVideo || templatePages.length === 0}
-        >
-          <Sparkles className="h-4 w-4 mr-2" />
-          Export Video
-        </Button> 
+
 
 */
