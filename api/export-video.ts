@@ -23,36 +23,39 @@ export default async function handler(req: any, res: any) {
     // Limit to 8 pages (413 safe)
     const safePages = pages.slice(0, 8);
 
-    const clips = safePages.map((src: string, index: number) => ({
-      asset: {
-        type: 'image',
-        src: src.trim()
-      },
-      start: index * 4,
-      length: 4,
-      width: 1000,
-      height: 1416,
-      position: 'center',
-      fit: 'contain',
-      transition: {
-        "in": "fade",
-        "out": "fade"
-      }
-    }));
+   const clips = safePages.map((src: string, index: number) => ({
+    asset: {
+      type: 'image',
+      src: src.trim()
+    },
+    start: index * 4,
+    length: 4,
+    // Clip-level fit, not the video size
+    fit: 'contain',
+    position: 'center',
+    transition: {
+      in: 'fade',
+      out: 'fade',
+    },
+  }));
 
-    const payload = {
-      timeline: {
-        tracks: [{
-          clips: clips
-        }],
-        background: '#000000'
-      },
-      output: {
-        format: 'mp4',
-        resolution: 'sd',
-        fps: 24
-      }
-    };
+  const payload = {
+    timeline: {
+      tracks: [
+        {
+          clips,
+        },
+      ],
+      background: '#000000',
+    },
+    output: {
+      format: 'mp4',
+      resolution: 'sd',      // keeps cost down
+      aspectRatio: '9:16',   // 🔥 portrait, Shotstack-supported option
+      fps: 24,
+    },
+  };
+
 
     const response = await fetch(SHOTSTACK_URL, {
       method: 'POST',

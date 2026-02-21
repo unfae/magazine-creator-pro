@@ -673,31 +673,38 @@ export default function CreateMagazinePage() {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return toast.error('Sign in required');
+      if (!user) {
+        toast.error('Sign in required');
+        return;
+      }
 
-      // ✅ RENDERED TEMPLATE + USER IMAGES (small URLs)
-      const pageUrls = templatePages.slice(0, 8).map(pg => {
-        const pageNum = pg.page_number || pg.pagenumber;
-        
-        // Priority 1: Rendered template page
-        const templateUrl = buildTemplatePageUrl(template.slug, pageNum);
-        
-        // Priority 2: DOM img (user uploads)
-        const pageEl = document.getElementById(`page-${pageNum}`);
-        const userImg = pageEl?.querySelector('[data-image-slot] img')?.src;
-        
-        return userImg || templateUrl; // ✅ Compact URLs
-      }).filter(Boolean);
+      // Use the same logic as your preview for the page base image
+      const pageUrls = templatePages
+        .slice(0, 8) // keep a safe limit
+        .map((pg) => {
+          const pageNum = pg.page_number || (pg as any).pagenumber;
+          // Main magazine page image (with template art)
+          const bgUrl = pg.page_image_url || buildTemplatePageUrl(template.slug, pageNum);
+          return bgUrl;
+        })
+        .filter(Boolean);
 
-      console.log('📱 Video pages:', pageUrls.length);
+      if (pageUrls.length === 0) {
+        toast.error('No valid page images found for video');
+        return;
+      }
+
+      console.log('📱 Video page URLs:', pageUrls);
+
       await exportVideo(pageUrls, template, user.id);
-
     } catch (err) {
+      console.error(err);
       toast.error('Video export failed');
     } finally {
       setIsGenerating(false);
     }
   };
+
 
 
 
