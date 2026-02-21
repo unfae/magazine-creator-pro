@@ -1,38 +1,10 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import type { ReactNode } from 'react';
-
-// Simple layout for the toast
-function videoToastContent(progress: number, subtitle?: string, showButton?: boolean, videoUrl?: string): ReactNode {
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="font-semibold text-base">
-        Generating Video… {progress}%
-      </div>
-      <div className="text-xs text-muted-foreground">
-        Kindly hold on briefly, the video should be ready in a minute or two. Thank you.
-      </div>
-      {subtitle && (
-        <div className="text-xs">
-          {subtitle}
-        </div>
-      )}
-      {showButton && videoUrl && (
-        <button
-          className="mt-1 inline-flex items-center justify-center rounded bg-foreground px-3 py-1 text-xs font-medium text-background"
-          onClick={() => window.open(videoUrl, '_blank')}
-        >
-          Open Video
-        </button>
-      )}
-    </div>
-  );
-}
 
 export function useVideoExport() {
   const [isExportingVideo, setIsExportingVideo] = useState(false);
 
-  // Now expects a toastId (created in handleExportVideo) and a starting progress
+  // Accept toastId and startProgress so we keep a single toast
   const exportVideo = async (
     pageUrls: string[],
     template: any,
@@ -49,9 +21,9 @@ export function useVideoExport() {
 
     let progress = startProgress;
 
-    // Ensure toast shows our layout at handoff
-    toast.custom(
-      () => videoToastContent(progress, 'Rendering video…'),
+    // Ensure toast is in a known state at handoff
+    toast.loading(
+      `Generating Video... ${progress}%\n\nKindly hold on briefly while your video is being prepared...`,
       { id: toastId, position: 'top-left', duration: 0 }
     );
 
@@ -73,8 +45,8 @@ export function useVideoExport() {
       await pollVideoStatus(data.renderId, toastId, progress);
     } catch (err: any) {
       console.error(err);
-      toast.custom(
-        () => videoToastContent(progress, err.message || 'Video export failed'),
+      toast.error(
+        `Generating Video... ${progress}%\n\n${err.message || 'Video export failed'}`,
         { id: toastId, position: 'top-left' }
       );
     } finally {
@@ -87,12 +59,12 @@ export function useVideoExport() {
     toastId: string | number,
     currentProgress: number
   ) => {
-    let progress = currentProgress; // e.g. 50
+    let progress = currentProgress;
 
     const bumpProgress = () => {
       progress = Math.min(progress + 1, 99); // 1% steps up to 99
-      toast.custom(
-        () => videoToastContent(progress, 'Rendering video…'),
+      toast.loading(
+        `Generating Video... ${progress}%\n\nKindly hold on briefly while your video is being prepared...`,
         { id: toastId, position: 'top-left', duration: 0 }
       );
     };
@@ -104,8 +76,8 @@ export function useVideoExport() {
         console.log('Poll status:', data);
 
         if (!res.ok) {
-          toast.custom(
-            () => videoToastContent(progress, 'Video status check failed. Please try again later.'),
+          toast.error(
+            `Generating Video... ${progress}%\n\nVideo status check failed. Please try again later.`,
             { id: toastId, position: 'top-left' }
           );
           return;
@@ -116,17 +88,27 @@ export function useVideoExport() {
         if (status === 'done') {
           const videoUrl = data.response.url;
 
-          // Final state: 100%, persistent, with button
-          toast.custom(
-            () => videoToastContent(100, 'Video is ready.', true, videoUrl),
-            { id: toastId, position: 'top-left', duration: 0 }
+          // Final state: 100% with "Open Video" button (as toast action)
+          toast.success(
+            `Generating Video... 100%\n\nKindly hold on briefly while your video is being prepared...`,
+            {
+              id: toastId,
+              position: 'top-left',
+              duration: 0,
+              action: {
+                label: 'Open Video',
+                onClick: () => {
+                  window.open(videoUrl, '_blank');
+                },
+              },
+            }
           );
           return;
         }
 
         if (status === 'failed') {
-          toast.custom(
-            () => videoToastContent(progress, data.response.error || 'Video render failed'),
+          toast.error(
+            `Generating Video... ${progress}%\n\n${data.response.error || 'Video render failed'}`,
             { id: toastId, position: 'top-left' }
           );
           return;

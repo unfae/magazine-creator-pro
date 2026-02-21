@@ -766,16 +766,16 @@ export default function CreateMagazinePage() {
     setIsGenerating(true);
 
     let progress = 0;
-    const toastId = toast.custom(
-      () => videoToastContent(progress, 'Rendering magazine pages…'),
+    const toastId = toast.loading(
+      `Generating Video... ${progress}%\n\nKindly hold on briefly while your video is being prepared...`,
       { position: 'top-left', duration: 0 }
     );
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.custom(
-          () => videoToastContent(progress, 'Sign in required'),
+        toast.error(
+          `Generating Video... ${progress}%\n\nSign in required.`,
           { id: toastId, position: 'top-left' }
         );
         return;
@@ -789,21 +789,18 @@ export default function CreateMagazinePage() {
         const url = await renderPageToImageUrl(pg);
         renderedUrls.push(url);
 
-        const target = Math.round(((i + 1) / maxPages) * 50); // 0–50
-        while (progress < target) {
-          progress += 1;
-          toast.custom(
-            () => videoToastContent(progress, 'Rendering magazine pages…'),
-            { id: toastId, position: 'top-left', duration: 0 }
-          );
-          await new Promise((r) => setTimeout(r, 20));
-        }
+        // Simple: map pages to 0–50% linearly
+        progress = Math.round(((i + 1) / maxPages) * 50);
+        toast.loading(
+          `Generating Video... ${progress}%\n\nKindly hold on briefly while your video is being prepared...`,
+          { id: toastId, position: 'top-left', duration: 0 }
+        );
       }
 
       const pageUrls = renderedUrls.filter((u): u is string => !!u);
       if (!pageUrls.length) {
-        toast.custom(
-          () => videoToastContent(progress, 'Failed to render magazine pages'),
+        toast.error(
+          `Generating Video... ${progress}%\n\nFailed to render magazine pages.`,
           { id: toastId, position: 'top-left' }
         );
         return;
@@ -813,14 +810,15 @@ export default function CreateMagazinePage() {
       await exportVideo(pageUrls, template, user.id, toastId, progress);
     } catch (err) {
       console.error(err);
-      toast.custom(
-        () => videoToastContent(progress, 'Video export failed'),
+      toast.error(
+        `Generating Video... ${progress}%\n\nVideo export failed.`,
         { id: toastId, position: 'top-left' }
       );
     } finally {
       setIsGenerating(false);
     }
   };
+
 
 
 
