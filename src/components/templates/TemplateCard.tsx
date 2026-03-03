@@ -52,10 +52,10 @@ export function TemplateCard({ template, usageCount }: TemplateCardProps) {
           {usageCount !== undefined && usageCount > 0 ? (
             <div className="flex items-center gap-1 mt-2 text-xs text-gold font-medium">
               <TrendingUp className="h-3.5 w-3.5" />
-              {usageCount} {usageCount === 1 ? 'magazine made' : 'magazines made'} with this
+              Used {usageCount} {usageCount === 1 ? 'time' : 'times'}
             </div>
           ) : (
-            <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground italic">
+            <div className="flex items-center gap-1 mt-2 text-xs text-gold italic">
               ✨ Be the first to use this template
             </div>
           )}
