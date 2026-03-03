@@ -25,13 +25,13 @@ export default function TemplatesPage() {
 
       // Fetch all export rows (just template_id) in one shot
       const { data: exportData } = await supabase
-        .from('template_exports')
-        .select('template_id');
+        .from('template_usage_counts')
+        .select('template_id, usage_count');
 
       if (exportData) {
         const counts: Record<string, number> = {};
-        exportData.forEach(({ template_id }: { template_id: string }) => {
-          if (template_id) counts[template_id] = (counts[template_id] || 0) + 1;
+        exportData.forEach(({ template_id, usage_count }: { template_id: string; usage_count: number }) => {
+          if (template_id) counts[template_id] = usage_count;
         });
         setUsageCounts(counts);
       }
