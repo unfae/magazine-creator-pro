@@ -1,14 +1,15 @@
 import { Template } from '@/types/magazine';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Image, FileText } from 'lucide-react';
+import { ArrowRight, Image, FileText, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface TemplateCardProps {
   template: Template;
+  usageCount?: number;
 }
 
-export function TemplateCard({ template }: TemplateCardProps) {
+export function TemplateCard({ template, usageCount }: TemplateCardProps) {
   return (
     <Link to={`/create/${template.id}`}>
       <Card className="group overflow-hidden hover:shadow-elevated cursor-pointer">
@@ -20,11 +21,10 @@ export function TemplateCard({ template }: TemplateCardProps) {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-
-              <Button variant="gold" size="sm" className="w-full pointer-events-none">
-                Use Template
-                <ArrowRight className="h-4 w-4" />
-              </Button>
+            <Button variant="gold" size="sm" className="w-full pointer-events-none">
+              Use Template
+              <ArrowRight className="h-4 w-4" />
+            </Button>
           </div>
         </div>
         <div className="p-4">
@@ -47,6 +47,14 @@ export function TemplateCard({ template }: TemplateCardProps) {
               {template.requiredPhotos} photos max.
             </span>
           </div>
+
+          {/* Usage count */}
+          {usageCount !== undefined && usageCount > 0 && (
+            <div className="flex items-center gap-1 mt-2 text-xs text-gold font-medium">
+              <TrendingUp className="h-3.5 w-3.5" />
+              Used {usageCount} {usageCount === 1 ? 'time' : 'times'}
+            </div>
+          )}
         </div>
       </Card>
     </Link>

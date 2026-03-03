@@ -2,22 +2,37 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { TemplateCard } from '@/components/templates/TemplateCard';
-import { MagazineCard } from '@/components/magazines/MagazineCard';
-import { templates, sampleMagazines } from '@/data/mockData';
 import { Plus, ArrowRight, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getFeaturedTemplates } from '@/data/featured_templates';
 import { TipsSection } from '@/components/TipsSection';
 import { FAQSection } from '@/components/FAQSection';
+import { supabase } from '@/lib/supabase';
 
 export default function DashboardPage() {
   const [featuredTemplates, setFeaturedTemplates] = useState([]);
+  const [usageCounts, setUsageCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    getFeaturedTemplates(3).then(setFeaturedTemplates);
-  }, []);
+    const load = async () => {
+      const templates = await getFeaturedTemplates(3);
+      setFeaturedTemplates(templates);
 
-  const recentMagazines = sampleMagazines.slice(0, 2);
+      const { data: exportData } = await supabase
+        .from('template_exports')
+        .select('template_id');
+
+      if (exportData) {
+        const counts: Record<string, number> = {};
+        exportData.forEach(({ template_id }: { template_id: string }) => {
+          if (template_id) counts[template_id] = (counts[template_id] || 0) + 1;
+        });
+        setUsageCounts(counts);
+      }
+    };
+
+    load();
+  }, []);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -44,17 +59,13 @@ export default function DashboardPage() {
               </Link>
             </div>
           </div>
-          {/* Decorative element */}
           <div className="absolute right-0 top-0 w-1/3 h-full opacity-10 pointer-events-none hidden lg:block">
             <div className="w-full h-full bg-gold rotate-12 translate-x-1/2 scale-150" />
           </div>
         </Card>
       </section>
 
-      {/* Recent Magazines.. I deleted it */}
-      
-
-      {/* Featured Templates.. */}
+      {/* Featured Templates */}
       <section>
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -70,18 +81,20 @@ export default function DashboardPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
           {featuredTemplates.map((template) => (
-            <TemplateCard key={template.id} template={template} />
+            <TemplateCard
+              key={template.id}
+              template={template}
+              usageCount={usageCounts[template.id] || 0}
+            />
           ))}
         </div>
       </section>
 
       <TipsSection />
 
-      {/* FAQ section */}
       <div className="mt-2">
         <FAQSection />
       </div>
-
     </div>
   );
 }

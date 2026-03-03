@@ -4,34 +4,45 @@ import { ArrowRight, BookOpen, Sparkles, Image } from 'lucide-react';
 import { TemplateCard } from '@/components/templates/TemplateCard';
 import { getFeaturedTemplates } from '@/data/featured_templates';
 import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom'
-import { useAuth } from '@/context/AuthContext'
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
 import { TipsSection } from '@/components/TipsSection';
 import { FAQSection } from '@/components/FAQSection';
-
-
-
+import { supabase } from '@/lib/supabase';
 
 export default function Index() {
-  
-  const { user, loading } = useAuth()
-
-  if (loading) return null
-
-  if (user) {
-    return <Navigate to="/dashboard" replace />
-  }
+  const { user, loading } = useAuth();
 
   const [featuredTemplates, setFeaturedTemplates] = useState([]);
+  const [usageCounts, setUsageCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    getFeaturedTemplates(3).then(setFeaturedTemplates);
+    const load = async () => {
+      const templates = await getFeaturedTemplates(3);
+      setFeaturedTemplates(templates);
+
+      const { data: exportData } = await supabase
+        .from('template_exports')
+        .select('template_id');
+
+      if (exportData) {
+        const counts: Record<string, number> = {};
+        exportData.forEach(({ template_id }: { template_id: string }) => {
+          if (template_id) counts[template_id] = (counts[template_id] || 0) + 1;
+        });
+        setUsageCounts(counts);
+      }
+    };
+
+    load();
   }, []);
 
+  if (loading) return null;
+  if (user) return <Navigate to="/dashboard" replace />;
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section... */}
+      {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 opacity-5">
           <div
@@ -72,7 +83,6 @@ export default function Index() {
                 </Button>
               </Link>
             </div>
-
           </div>
         </div>
       </section>
@@ -121,7 +131,7 @@ export default function Index() {
         </div>
       </section>
 
-      {/* ⭐ Featured Templates */}
+      {/* Featured Templates */}
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between mb-6">
@@ -141,7 +151,11 @@ export default function Index() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
             {featuredTemplates.map((template) => (
-              <TemplateCard key={template.id} template={template} />
+              <TemplateCard
+                key={template.id}
+                template={template}
+                usageCount={usageCounts[template.id] || 0}
+              />
             ))}
           </div>
         </div>
@@ -149,7 +163,6 @@ export default function Index() {
 
       <TipsSection />
 
-      {/* FAQ section */}
       <div className="mt-2">
         <FAQSection />
       </div>
