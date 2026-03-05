@@ -93,7 +93,7 @@ export default function TemplatesPage() {
             className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
           >
             {searchInput ? (
-              <span className="flex items-center justify-center w-6 h-6 rounded-full border border-current">
+              <span className="flex items-center justify-center w-6 h-6 rounded-md border border-current">
                 <ArrowRight className="h-3.5 w-3.5" />
               </span>
             ) : (
