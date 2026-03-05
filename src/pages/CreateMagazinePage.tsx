@@ -125,7 +125,7 @@ export default function CreateMagazinePage() {
       const { data: pages, error: pErr } = await supabase
         .from('template_pages')
         .select('*')
-        .eq('template_id', templateId)
+        .eq('template_id', tmpl.id)
         .order('page_number', { ascending: true });
 
       if (pErr) {
