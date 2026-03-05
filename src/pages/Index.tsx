@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { TipsSection } from '@/components/TipsSection';
 import { FAQSection } from '@/components/FAQSection';
 import { supabase } from '@/lib/supabase';
+import { CTASection } from '@/components/CTASection';
 
 export default function Index() {
   const { user, loading } = useAuth();
@@ -162,6 +163,8 @@ export default function Index() {
       </section>
 
       <TipsSection />
+
+      <CTASection />
 
       <div className="mt-2">
         <FAQSection />

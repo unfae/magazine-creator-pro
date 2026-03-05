@@ -22,6 +22,9 @@ import { AuthProvider } from '@/context/AuthContext';
 import PageJsonGenerator from "@/pages/PageJsonGenerator";
 import TemplatePaymentCallbackPage from "@/pages/TemplatePaymentCallbackPage";
 import FAQsPage from "@/pages/FAQsPage";
+import ContactPage from "@/pages/ContactPage";
+import TemplateRequestPage from "@/pages/TemplateRequestPage";
+import PartnerPage from "@/pages/PartnerPage";
 
 
 
@@ -49,6 +52,9 @@ const App = () => (
               <Route path="/templates" element={<TemplatesPage />} />
               <Route path="/faqs" element={<FAQsPage />} />
               <Route path="/page-json-generator" element={<PageJsonGenerator />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/template-request" element={<TemplateRequestPage />} />
+              <Route path="/partner" element={<PartnerPage />} />
 
               {/* Authenticated */}
               <Route path="/dashboard" element={<DashboardPage />} />
