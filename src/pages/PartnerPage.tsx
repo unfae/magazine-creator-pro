@@ -76,7 +76,7 @@ export default function PartnerPage() {
         <CheckCircle2 className="h-14 w-14 text-gold" />
         <h2 className="font-serif text-2xl font-semibold">Thanks for reaching out!</h2>
         <p className="text-muted-foreground max-w-md">
-          We've received your partnership inquiry and will get back to you within 2–3 business days.
+          We've received your partnership request and will get back to you within 24 hours.
         </p>
         <Button variant="outline" onClick={() => { setSubmitted(false); setForm({ name: '', businessName: '', email: '', phone: '', partnershipType: '', subject: '', message: '', links: '' }); }}>
           Submit another
@@ -99,7 +99,7 @@ export default function PartnerPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-serif">Partnership Inquiry</CardTitle>
+          <CardTitle className="text-lg font-serif">Partnership Request</CardTitle>
           <CardDescription>Fill in the details below and we'll be in touch.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -167,7 +167,7 @@ export default function PartnerPage() {
           </div>
 
           <Button variant="gold" className="w-full" onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Sending...' : 'Submit Inquiry'}
+            {loading ? 'Sending...' : 'Submit Request'}
           </Button>
 
         </CardContent>
