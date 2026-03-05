@@ -69,7 +69,7 @@ type TemplatePage = {
 };
 
 export default function CreateMagazinePage() {
-  const { templateId } = useParams();
+  const { templateSlug } = useParams();
   const navigate = useNavigate();
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
   const perSlotFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -112,7 +112,7 @@ export default function CreateMagazinePage() {
       const { data: tmpl, error: tErr } = await supabase
         .from('templates')
         .select('*')
-        .eq('id', templateId)
+        .eq('slug', templateSlug)
         .single();
 
       if (tErr || !tmpl) {

@@ -8,9 +8,10 @@ const categories = ['All', 'Fashion', 'Travel', 'Family', 'Memories', 'Wedding',
 
 export default function TemplatesPage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [templates, setTemplates] = useState<any[]>([]);
-  const [usageCounts, setUsageCounts] = useState<Record<string, number>>({});  // 👈 new
+  const [usageCounts, setUsageCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,7 +24,6 @@ export default function TemplatesPage() {
 
       if (!error) setTemplates(data || []);
 
-      // Fetch all export rows (just template_id) in one shot
       const { data: exportData } = await supabase
         .from('template_usage_counts')
         .select('template_id, usage_count');
@@ -42,6 +42,8 @@ export default function TemplatesPage() {
     fetchTemplates();
   }, []);
 
+  const triggerSearch = () => setSearch(searchInput.trim().toLowerCase());
+
   const normalizedSearch = search.trim().toLowerCase();
 
   const categoryFiltered = useMemo(() => {
@@ -54,8 +56,12 @@ export default function TemplatesPage() {
     return categoryFiltered.filter((t) => {
       const name = t.name?.toLowerCase() || '';
       const category = t.category?.toLowerCase() || '';
-      const tags = (t.tags || []).map((t: string) => t.toLowerCase());
-      return name.includes(normalizedSearch) || category.includes(normalizedSearch) || tags.includes(normalizedSearch);
+      const tags = (t.tags || []).map((tag: string) => tag.toLowerCase());
+      return (
+        name.includes(normalizedSearch) ||
+        category.includes(normalizedSearch) ||
+        tags.some((tag: string) => tag.includes(normalizedSearch))
+      );
     });
   }, [categoryFiltered, normalizedSearch]);
 
@@ -68,25 +74,36 @@ export default function TemplatesPage() {
         </p>
       </div>
 
+      {/* Search bar */}
       <div className="mb-8 flex justify-center">
         <div className="relative w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <button
+            onClick={triggerSearch}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Search className="h-4 w-4" />
+          </button>
           <input
             type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && triggerSearch()}
             placeholder="Search templates..."
             className="w-full rounded-lg border border-input bg-background px-10 py-2 text-sm shadow-sm placeholder:text-muted-foreground/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
           />
         </div>
       </div>
 
+      {/* Category filters */}
       <div className="flex justify-center mb-8">
         <div className="flex flex-wrap justify-center gap-2">
           {categories.map((category) => (
             <button
               key={category}
-              onClick={() => { setSelectedCategory(category); if (search) setSearch(''); }}
+              onClick={() => {
+                setSelectedCategory(category);
+                if (searchInput) { setSearchInput(''); setSearch(''); }
+              }}
               className={cn(
                 'px-4 py-2 text-sm font-medium rounded-full transition-all duration-200',
                 selectedCategory === category
@@ -112,7 +129,7 @@ export default function TemplatesPage() {
             <TemplateCard
               key={template.id}
               template={template}
-              usageCount={usageCounts[template.id] || 0}  // 👈 pass count
+              usageCount={usageCounts[template.id] || 0}
             />
           ))}
         </div>

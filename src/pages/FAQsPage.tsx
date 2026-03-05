@@ -16,6 +16,7 @@ interface Faq {
 
 export default function FAQsPage() {
   const [faqs, setFaqs] = useState<Faq[]>([]);
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -35,15 +36,15 @@ export default function FAQsPage() {
     fetchFaqs();
   }, []);
 
+  const triggerSearch = () => setSearch(searchInput.trim().toLowerCase());
+
   const normalizedSearch = search.trim().toLowerCase();
 
   const filteredFaqs = useMemo(() => {
     if (!normalizedSearch) return faqs;
-
     return faqs.filter((f) => {
       const question = f.question?.toLowerCase() || '';
       const answer = f.answer?.toLowerCase() || '';
-
       return question.includes(normalizedSearch) || answer.includes(normalizedSearch);
     });
   }, [faqs, normalizedSearch]);
@@ -58,22 +59,24 @@ export default function FAQsPage() {
             Frequently Asked Questions
           </h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Have questions about MagznMaker, templates, or how to create your magazine? We’ve got answers.
+            Have questions about MagznMaker, templates, or how to create your magazine? We've got answers.
           </p>
         </div>
 
         {/* Search bar */}
         <div className="mb-10">
           <div className="relative max-w-lg mx-auto">
-            <Search
-              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden="true"
-            />
-
+            <button
+              onClick={triggerSearch}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Search className="h-4 w-4" />
+            </button>
             <input
               type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && triggerSearch()}
               placeholder="Search all FAQs..."
               className="w-full rounded-lg border border-input bg-background px-10 py-2 text-sm shadow-sm 
                          placeholder:text-muted-foreground/80 

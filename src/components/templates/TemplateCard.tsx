@@ -10,8 +10,10 @@ interface TemplateCardProps {
 }
 
 export function TemplateCard({ template, usageCount }: TemplateCardProps) {
+  const isFree = !template.price || template.price === 0;
+
   return (
-    <Link to={`/create/${template.id}`}>
+    <Link to={`/create/${template.slug}`}>
       <Card className="group overflow-hidden hover:shadow-elevated cursor-pointer">
         <div className="aspect-[4/5] overflow-hidden relative">
           <img
@@ -27,16 +29,29 @@ export function TemplateCard({ template, usageCount }: TemplateCardProps) {
             </Button>
           </div>
         </div>
+
         <div className="p-4">
+          {/* Tags row */}
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs font-medium px-2 py-1 bg-secondary rounded-full text-secondary-foreground">
               {template.category}
             </span>
+            {isFree ? (
+              <span className="text-xs font-medium px-2 py-1 bg-muted rounded-full text-muted-foreground">
+                Free
+              </span>
+            ) : (
+              <span className="text-xs font-medium px-2 py-1 bg-gold/10 text-gold rounded-full">
+                ₦{Number(template.price).toLocaleString()}
+              </span>
+            )}
           </div>
+
           <h3 className="font-serif text-xl font-medium mb-1">{template.name}</h3>
           <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
             {template.description}
           </p>
+
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <FileText className="h-3.5 w-3.5" />

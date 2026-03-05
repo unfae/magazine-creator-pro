@@ -58,7 +58,7 @@ const App = () => (
 
               {/* Authenticated */}
               <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/create/:templateId" element={<CreateMagazinePage />} />
+              <Route path="/create/:templateSlug" element={<CreateMagazinePage />} />
               <Route path="/magazines" element={<MagazinesPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/settings" element={<SettingsPage />} />
