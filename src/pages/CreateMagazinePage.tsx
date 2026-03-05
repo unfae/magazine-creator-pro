@@ -162,12 +162,12 @@ export default function CreateMagazinePage() {
       setLoadingTemplate(false);
     };
 
-    if (templateId) fetchTemplateAndPages();
+    if (templateSlug) fetchTemplateAndPages();
 
     return () => {
       mounted = false;
     };
-  }, [templateId, bulkTextValues]);
+    }, [templateSlug, bulkTextValues]);
 
   useEffect(() => {
     if (templatePages.length === 0) return;
