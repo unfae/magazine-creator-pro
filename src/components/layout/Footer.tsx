@@ -58,21 +58,19 @@ export function Footer() {
                 </ul>
               </div>
 
-              <div>
-                <h4 className="text-sm font-semibold text-foreground mb-4">Legal</h4>
-                <ul className="space-y-3 text-sm text-muted-foreground">
-                  <li><Link to="/terms" className="hover:text-foreground transition-colors">Terms & Conditions</Link></li>
-                  <li><Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link></li>
-                </ul>
-              </div>
 
             </div>
           </div>
 
         </div>
 
-        <div className="border-t mt-10 pt-6 text-sm text-muted-foreground text-center">
-          © {new Date().getFullYear()} MagzineMaker. All rights reserved.
+        {/* Bottom bar */}
+        <div className="border-t mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
+          <span>© {new Date().getFullYear()} MagzineMaker. All rights reserved.</span>
+          <div className="flex items-center gap-4">
+            <Link to="/terms" className="hover:text-foreground transition-colors">Terms & Conditions</Link>
+            <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+          </div>
         </div>
 
       </div>

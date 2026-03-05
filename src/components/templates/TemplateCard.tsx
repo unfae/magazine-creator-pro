@@ -31,8 +31,8 @@ export function TemplateCard({ template, usageCount }: TemplateCardProps) {
         </div>
 
         <div className="p-4">
-          {/* Tags row */}
-          <div className="flex items-center gap-2 mb-2">
+          {/* Tags row — category left, price right */}
+          <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium px-2 py-1 bg-secondary rounded-full text-secondary-foreground">
               {template.category}
             </span>
@@ -63,7 +63,6 @@ export function TemplateCard({ template, usageCount }: TemplateCardProps) {
             </span>
           </div>
 
-          {/* Usage count */}
           {usageCount !== undefined && usageCount > 0 ? (
             <div className="flex items-center gap-1 mt-2 text-xs text-gold font-medium">
               <TrendingUp className="h-3.5 w-3.5" />

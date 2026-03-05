@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { TemplateCard } from '@/components/templates/TemplateCard';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
-import { Search } from 'lucide-react';
+import { Search, ArrowRight } from 'lucide-react';
 
 const categories = ['All', 'Fashion', 'Travel', 'Family', 'Memories', 'Wedding', 'Faith'] as const;
 
@@ -77,20 +77,20 @@ export default function TemplatesPage() {
       {/* Search bar */}
       <div className="mb-8 flex justify-center">
         <div className="relative w-full max-w-md">
-          <button
-            onClick={triggerSearch}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Search className="h-4 w-4" />
-          </button>
           <input
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && triggerSearch()}
             placeholder="Search templates..."
-            className="w-full rounded-lg border border-input bg-background px-10 py-2 text-sm shadow-sm placeholder:text-muted-foreground/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+            className="w-full rounded-lg border border-input bg-background pl-4 pr-10 py-2 text-sm shadow-sm placeholder:text-muted-foreground/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
           />
+          <button
+            onClick={triggerSearch}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {searchInput ? <ArrowRight className="h-4 w-4" /> : <Search className="h-4 w-4" />}
+          </button>
         </div>
       </div>
 
