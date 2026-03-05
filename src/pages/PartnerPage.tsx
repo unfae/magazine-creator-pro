@@ -1,62 +1,70 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { toast } from 'sonner';
-import { Handshake } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { Handshake, CheckCircle2 } from 'lucide-react';
 
-const FORM_ACTION = 'https://docs.google.com/forms/d/e/1FAIpQLSeJ6D9WZ62NNIzl9NtcR4LrkLV2MvTdT_VBUwAiRRZCUgj6ug/formResponse';
+const FORM_ID = '1FAIpQLSeJ6D9WZ62NNIzl9NtcR4LrkLV2MvTdT_VBUwAiRRZCUgj6ug';
+const FORM_URL = `https://docs.google.com/forms/d/e/${FORM_ID}/formResponse`;
 
-const PARTNERSHIP_TYPES = ['Collaboration', 'Sponsorship', 'Affiliate', 'Other'];
+const FIELDS = {
+  name:            'entry.60107210',
+  businessName:    'entry.2133471902',
+  email:           'entry.1027458116',
+  phone:           'entry.1255935676',
+  partnershipType: 'entry.1803847672',
+  subject:         'entry.1203771449',
+  message:         'entry.2120584971',
+  links:           'entry.1869377256',
+};
 
 export default function PartnerPage() {
-  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+
   const [form, setForm] = useState({
     name: '',
     businessName: '',
     email: '',
     phone: '',
-    partnershipType: 'Collaboration',
+    partnershipType: '',
     subject: '',
     message: '',
+    links: '',
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm(prev => ({ ...prev, [field]: e.target.value }));
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!form.name || !form.email || !form.businessName || !form.message) {
-      toast.error('Please fill in all required fields');
+  const handleSubmit = async () => {
+    if (!form.name || !form.email || !form.businessName || !form.partnershipType || !form.message) {
+      toast({ title: 'Please fill in all required fields.', variant: 'destructive' });
       return;
     }
 
     setLoading(true);
 
-    const body = new FormData();
-    body.append('entry.60107210', form.name);
-    body.append('entry.2133471902', form.businessName);
-    body.append('entry.1027458116', form.email);
-    body.append('entry.1255935676', form.phone);
-    body.append('entry.1803847672', form.partnershipType);
-    body.append('entry.1203771449', form.subject);
-    body.append('entry.2120584971', form.message);
+    const body = new URLSearchParams({
+      [FIELDS.name]:            form.name,
+      [FIELDS.businessName]:    form.businessName,
+      [FIELDS.email]:           form.email,
+      [FIELDS.phone]:           form.phone,
+      [FIELDS.partnershipType]: form.partnershipType,
+      [FIELDS.subject]:         form.subject,
+      [FIELDS.message]:         form.message,
+      [FIELDS.links]:           form.links,
+    });
 
     try {
-      await fetch(FORM_ACTION, {
-        method: 'POST',
-        mode: 'no-cors',
-        body,
-      });
-
+      await fetch(FORM_URL, { method: 'POST', mode: 'no-cors', body });
       setSubmitted(true);
-      toast.success('Partnership request sent! We\'ll be in touch.');
-    } catch (err) {
-      toast.error('Something went wrong. Please try again.');
+    } catch {
+      toast({ title: 'Something went wrong. Please try again.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -64,131 +72,104 @@ export default function PartnerPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center px-4">
-        <div className="text-center max-w-md">
-          <div className="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center mx-auto mb-4">
-            <Handshake className="h-7 w-7 text-gold" />
-          </div>
-          <h2 className="text-editorial-md mb-3">We'd Love to Work With You!</h2>
-          <p className="text-muted-foreground mb-6">
-            Thanks for your interest in partnering with us. We'll review your submission and reach out soon.
-          </p>
-          <Button variant="outline" onClick={() => { setSubmitted(false); setForm({ name: '', businessName: '', email: '', phone: '', partnershipType: 'Collaboration', subject: '', message: '' }); }}>
-            Submit Another Request
-          </Button>
-        </div>
+      <div className="container mx-auto px-4 py-20 flex flex-col items-center text-center gap-4">
+        <CheckCircle2 className="h-14 w-14 text-gold" />
+        <h2 className="font-serif text-2xl font-semibold">Thanks for reaching out!</h2>
+        <p className="text-muted-foreground max-w-md">
+          We've received your partnership inquiry and will get back to you within 2–3 business days.
+        </p>
+        <Button variant="outline" onClick={() => { setSubmitted(false); setForm({ name: '', businessName: '', email: '', phone: '', partnershipType: '', subject: '', message: '', links: '' }); }}>
+          Submit another
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-2xl">
-      <div className="text-center mb-10">
-        <h1 className="text-editorial-md mb-2">Partner With Us</h1>
-        <p className="text-muted-foreground">
-          Interested in collaborating, sponsoring, or affiliating with MagznMaker? Let's talk.
-        </p>
+    <div className="container mx-auto px-4 py-16 max-w-2xl">
+      <div className="flex items-center gap-3 mb-8">
+        <div className="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center">
+          <Handshake className="h-5 w-5 text-gold" />
+        </div>
+        <div>
+          <h1 className="font-serif text-2xl font-semibold">Partner With Us</h1>
+          <p className="text-sm text-muted-foreground">Collaborations, sponsorships, affiliates & more</p>
+        </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base font-medium">
-            <Handshake className="h-4 w-4 text-gold" />
-            Tell us about your proposal
-          </CardTitle>
-          <CardDescription>We're open to creative partnerships that benefit our community.</CardDescription>
+          <CardTitle className="text-lg font-serif">Partnership Inquiry</CardTitle>
+          <CardDescription>Fill in the details below and we'll be in touch.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-sm font-medium">Full Name <span className="text-destructive">*</span></label>
-                <Input
-                  name="name"
-                  value={form.name}
-                  onChange={handleChange}
-                  placeholder="Your name"
-                  required
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium">Business / Brand Name <span className="text-destructive">*</span></label>
-                <Input
-                  name="businessName"
-                  value={form.businessName}
-                  onChange={handleChange}
-                  placeholder="Your business or brand"
-                  required
-                />
-              </div>
-            </div>
+        <CardContent className="space-y-5">
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-sm font-medium">Email <span className="text-destructive">*</span></label>
-                <Input
-                  name="email"
-                  type="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  placeholder="your@email.com"
-                  required
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium">
-                  Phone
-                  <span className="text-muted-foreground font-normal ml-1">(optional)</span>
-                </label>
-                <Input
-                  name="phone"
-                  value={form.phone}
-                  onChange={handleChange}
-                  placeholder="+234..."
-                />
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Your Name <span className="text-destructive">*</span></Label>
+              <Input placeholder="Jane Doe" value={form.name} onChange={set('name')} />
             </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Partnership Type</label>
-              <select
-                name="partnershipType"
-                value={form.partnershipType}
-                onChange={handleChange}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              >
-                {PARTNERSHIP_TYPES.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
+            <div className="space-y-1.5">
+              <Label>Business Name <span className="text-destructive">*</span></Label>
+              <Input placeholder="Acme Studios" value={form.businessName} onChange={set('businessName')} />
             </div>
+          </div>
 
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Subject</label>
-              <Input
-                name="subject"
-                value={form.subject}
-                onChange={handleChange}
-                placeholder="Brief subject of your proposal"
-              />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Email Address <span className="text-destructive">*</span></Label>
+              <Input type="email" placeholder="jane@example.com" value={form.email} onChange={set('email')} />
             </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Message <span className="text-destructive">*</span></label>
-              <Textarea
-                name="message"
-                value={form.message}
-                onChange={handleChange}
-                placeholder="Tell us about your partnership idea, what you're proposing, and what you'd bring to the table…"
-                className="min-h-[140px]"
-                required
-              />
+            <div className="space-y-1.5">
+              <Label>Phone Number</Label>
+              <Input placeholder="+1 234 567 8900" value={form.phone} onChange={set('phone')} />
             </div>
+          </div>
 
-            <Button type="submit" variant="gold" className="w-full" disabled={loading}>
-              {loading ? 'Sending…' : 'Send Proposal'}
-            </Button>
-          </form>
+          <div className="space-y-1.5">
+            <Label>Partnership Type <span className="text-destructive">*</span></Label>
+            <Select onValueChange={(v) => setForm(prev => ({ ...prev, partnershipType: v }))}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select type..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Collaboration">Collaboration</SelectItem>
+                <SelectItem value="Sponsorship">Sponsorship</SelectItem>
+                <SelectItem value="Affiliate">Affiliate</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Subject</Label>
+            <Input placeholder="Brief subject line" value={form.subject} onChange={set('subject')} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Website & Social Media Links</Label>
+            <Textarea
+              placeholder="Share your website URL, Instagram, TikTok, or any relevant links (one per line)"
+              className="min-h-[90px] resize-none"
+              value={form.links}
+              onChange={set('links')}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Tell Us More <span className="text-destructive">*</span></Label>
+            <Textarea
+              placeholder="Describe the partnership you have in mind, your audience, goals, etc."
+              className="min-h-[120px] resize-none"
+              value={form.message}
+              onChange={set('message')}
+            />
+          </div>
+
+          <Button variant="gold" className="w-full" onClick={handleSubmit} disabled={loading}>
+            {loading ? 'Sending...' : 'Submit Inquiry'}
+          </Button>
+
         </CardContent>
       </Card>
     </div>
