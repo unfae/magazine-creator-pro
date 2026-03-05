@@ -39,7 +39,7 @@ export function Footer() {
 
           {/* Link columns */}
           <div className="flex-1 flex justify-end">
-            <div className="grid grid-cols-3 gap-12">
+            <div className="grid grid-cols-2 gap-12">
 
               <div>
                 <h4 className="text-sm font-semibold text-foreground mb-4">Explore</h4>
@@ -67,7 +67,7 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="border-t mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
           <span>© {new Date().getFullYear()} MagzineMaker. All rights reserved.</span>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-8">
             <Link to="/terms" className="hover:text-foreground transition-colors">Terms & Conditions</Link>
             <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
           </div>

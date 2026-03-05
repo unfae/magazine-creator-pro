@@ -16,10 +16,12 @@ export default function TemplatesPage() {
 
   useEffect(() => {
     const fetchTemplates = async () => {
+      
       const { data, error } = await supabase
         .from('templates')
         .select('*')
         .eq('is_public', true)
+        .eq('private_template', false)
         .order('created_at', { ascending: false });
 
       if (!error) setTemplates(data || []);
@@ -85,11 +87,18 @@ export default function TemplatesPage() {
             placeholder="Search templates..."
             className="w-full rounded-lg border border-input bg-background pl-4 pr-10 py-2 text-sm shadow-sm placeholder:text-muted-foreground/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
           />
+
           <button
             onClick={triggerSearch}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
           >
-            {searchInput ? <ArrowRight className="h-4 w-4" /> : <Search className="h-4 w-4" />}
+            {searchInput ? (
+              <span className="flex items-center justify-center w-6 h-6 rounded-full border border-current">
+                <ArrowRight className="h-3.5 w-3.5" />
+              </span>
+            ) : (
+              <Search className="h-4 w-4" />
+            )}
           </button>
         </div>
       </div>

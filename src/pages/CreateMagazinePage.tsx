@@ -113,9 +113,6 @@ export default function CreateMagazinePage() {
         .from('templates')
         .select('*')
         .eq('slug', templateSlug)
-        .eq('is_public', true)
-        .eq('private_template', false)
-        .order('created_at', { ascending: false })
         .single();
 
       if (tErr || !tmpl) {
