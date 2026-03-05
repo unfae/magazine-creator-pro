@@ -27,7 +27,7 @@ const ctas = [
   },
 ];
 
-export function CtaSection() {
+export function CTASection() {
   const [hovered, setHovered] = useState<number | null>(null);
 
   return (
