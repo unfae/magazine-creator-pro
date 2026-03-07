@@ -83,6 +83,7 @@ export default function CreateMagazinePage() {
   const [isSignedIn, setIsSignedIn] = useState(false);
 
   const [templatePages, setTemplatePages] = useState<TemplatePage[]>([]);
+  const [loadingPages, setLoadingPages] = useState(false); // pages load separately after template meta
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const pageNumbers = templatePages.map((pg) => pg.page_number);
 
@@ -204,6 +205,9 @@ export default function CreateMagazinePage() {
     const fetchTemplateAndPages = async () => {
       setLoadingTemplate(true);
 
+      // ─── Step 1: fetch template row ───────────────────────────────────────────
+      // Set template immediately so the header, price UI, and paywall card all
+      // render right away — without waiting for pages to load.
       const { data: tmpl, error: tErr } = await supabase
         .from('templates')
         .select('*')
@@ -217,6 +221,16 @@ export default function CreateMagazinePage() {
         return;
       }
 
+      if (!mounted) return;
+
+      // ✅ Set template immediately — title, description, and paywall card are visible now
+      setTemplate(tmpl);
+      setLoadingTemplate(false);
+
+      // ─── Step 2: fetch pages in the background ────────────────────────────────
+      // Pages load separately so the paywall/discount UI is never blocked by them.
+      setLoadingPages(true);
+
       const { data: pages, error: pErr } = await supabase
         .from('template_pages')
         .select('*')
@@ -226,7 +240,7 @@ export default function CreateMagazinePage() {
       if (pErr) {
         console.error('Error fetching template pages:', pErr);
         toast.error('No template pages found');
-        setLoadingTemplate(false);
+        setLoadingPages(false);
         return;
       }
 
@@ -250,11 +264,10 @@ export default function CreateMagazinePage() {
         });
       });
 
-      setTemplate(tmpl);
       setTemplatePages(pages || []);
       setUserTexts(initialTexts);
       setUserImages(initialImages);
-      setLoadingTemplate(false);
+      setLoadingPages(false);
     };
 
     if (templateSlug) fetchTemplateAndPages();
@@ -1131,7 +1144,23 @@ export default function CreateMagazinePage() {
         </Card>
       )}
 
-      <div className="mb-6 relative">
+      {/* Page preview section — shows a skeleton while pages load in the background */}
+      {loadingPages && (
+        <div className="mb-6">
+          <div className="text-sm text-muted-foreground mb-3">Preview pages (click to edit)</div>
+          <div className="flex gap-6 overflow-hidden">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="flex-shrink-0 rounded-lg bg-muted animate-pulse"
+                style={{ width: PAGE_WIDTH * PREVIEW_SCALE, height: PAGE_HEIGHT * PREVIEW_SCALE }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!loadingPages && <div className="mb-6 relative">
         <div className="flex items-center justify-between mb-3">
           <div className="text-sm text-muted-foreground">Preview pages (click to edit)</div>
           <div className="flex gap-2">
@@ -1295,7 +1324,8 @@ export default function CreateMagazinePage() {
             })}
           </div>
         </div>
-      </div>
+      </div>}
+      {/* End of !loadingPages pages section */}
 
       <Card className="mb-6">
         <div className="p-6">
