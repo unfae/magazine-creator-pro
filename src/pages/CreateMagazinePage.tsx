@@ -1011,8 +1011,8 @@ export default function CreateMagazinePage() {
         <Card className="mb-6">
           <div className="p-6">
 
-            {/* Price row */}
-            <div className="flex items-center justify-between gap-4 mb-5">
+            {/* Price row — stacks on mobile, side by side on desktop */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
               <div>
                 <p className="font-medium">This template is paid.</p>
 
@@ -1042,17 +1042,21 @@ export default function CreateMagazinePage() {
                 )}
               </div>
 
-              {/* ✅ Fixed: wrapped in arrow function so click event isn't passed as discountCode */}
-              {/* Pass applied code to openPaywall so init-paystack can validate + apply server-side too */}
+              {/* Unlock button — desktop only (shown beside price) */}
+              {/* ✅ Passes finalAmount so Paystack receives the discounted price, not the original */}
               <Button
                 variant="gold"
-                onClick={() => openPaywall(appliedDiscount?.code || discountCode.trim() || undefined)}
+                className="hidden sm:inline-flex"
+                onClick={() => openPaywall(
+                  appliedDiscount?.code || discountCode.trim() || undefined,
+                  appliedDiscount?.finalAmount
+                )}
               >
                 Unlock Template
               </Button>
             </div>
 
-            {/* Discount code input row */}
+            {/* Discount code input + Apply/Remove */}
             <div className="flex items-center gap-2 max-w-xs">
               <div className="relative flex-1">
                 <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -1083,16 +1087,26 @@ export default function CreateMagazinePage() {
               {/* Show a remove link if code is already applied */}
               {appliedDiscount && (
                 <button
-                  onClick={() => {
-                    setAppliedDiscount(null);
-                    setDiscountCode('');
-                  }}
+                  onClick={() => { setAppliedDiscount(null); setDiscountCode(''); }}
                   className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors shrink-0"
                 >
                   Remove
                 </button>
               )}
             </div>
+
+            {/* Unlock button — mobile only (shown below discount input) */}
+            {/* ✅ Same fix: passes finalAmount so Paystack receives the discounted price */}
+            <Button
+              variant="gold"
+              className="mt-4 w-full sm:hidden"
+              onClick={() => openPaywall(
+                appliedDiscount?.code || discountCode.trim() || undefined,
+                appliedDiscount?.finalAmount
+              )}
+            >
+              Unlock Template
+            </Button>
 
           </div>
         </Card>
