@@ -56,15 +56,17 @@ export default function TemplatePaymentCallbackPage() {
         const localSlug = localStorage.getItem("pending_template_slug");
         const localId   = localStorage.getItem("pending_template_id");
 
-        // 🔍 DEBUG — remove after redirect is confirmed working
-        console.log("[redirect debug]", {
+        // 🔍 DEBUG — persists to localStorage so it survives the navigation
+        const debugInfo = {
           responseSlug,
           urlTemplateParam,
           urlIsUUID,
           localSlug,
           localId,
           fullData: data,
-        });
+        };
+        console.log("[redirect debug]", debugInfo);
+        localStorage.setItem("__redirect_debug__", JSON.stringify(debugInfo));
 
         localStorage.removeItem("pending_template_slug");
         localStorage.removeItem("pending_template_id");
