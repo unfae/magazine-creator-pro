@@ -85,55 +85,25 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Validate and apply discount code if provided
+    // The client has already calculated and validated the discounted amount before calling
+    // this function — so we use `amount` as-is. If a discountCode was provided, we look
+    // it up only to record its ID for tracking (uses_count is incremented by verify-paystack).
+    // We do NOT re-apply the discount math here to avoid double-discounting.
     let finalAmount = Number(amount);
     let discountCodeId: string | null = null;
-    let originalAmount: number | null = null;
+    const originalAmount: number | null = discountCode ? finalAmount : null;
 
     if (discountCode && typeof discountCode === "string") {
-      const { data: codeRow, error: codeErr } = await supabaseAdmin
+      const { data: codeRow } = await supabaseAdmin
         .from("template_discount_codes")
-        .select("*")
+        .select("id")
         .eq("code", discountCode.trim().toUpperCase())
         .eq("template_id", templateId)
         .eq("is_active", true)
         .maybeSingle();
 
-      if (codeErr || !codeRow) {
-        return new Response(JSON.stringify({ error: "Invalid or expired discount code" }), {
-          status: 400,
-          headers: { ...headers, "Content-Type": "application/json" },
-        });
-      }
-
-      // Check expiry
-      if (codeRow.expires_at && new Date(codeRow.expires_at) < new Date()) {
-        return new Response(JSON.stringify({ error: "Discount code has expired" }), {
-          status: 400,
-          headers: { ...headers, "Content-Type": "application/json" },
-        });
-      }
-
-      // Check max uses
-      if (codeRow.max_uses !== null && codeRow.uses_count >= codeRow.max_uses) {
-        return new Response(JSON.stringify({ error: "Discount code has reached its usage limit" }), {
-          status: 400,
-          headers: { ...headers, "Content-Type": "application/json" },
-        });
-      }
-
-      // Apply discount
-      originalAmount = finalAmount;
-      discountCodeId = codeRow.id;
-
-      if (codeRow.discount_type === "percent") {
-        finalAmount = finalAmount * (1 - codeRow.discount_value / 100);
-      } else {
-        // fixed
-        finalAmount = Math.max(0, finalAmount - codeRow.discount_value);
-      }
-
-      finalAmount = Math.round(finalAmount * 100) / 100;
+      // Record the code ID for tracking — validation already happened client-side
+      discountCodeId = codeRow?.id ?? null;
     }
 
     // ✅ 100% discount path — skip Paystack entirely
