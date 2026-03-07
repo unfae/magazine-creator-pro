@@ -12,8 +12,15 @@ export default function TemplatePaymentCallbackPage() {
 
   const reference = params.get("reference");
 
-  // ✅ Read slug from URL — set by init-paystack in the callback_url query param
-  const urlTemplateSlug = params.get("templateSlug");
+  // Paystack puts whatever was in callback_url back into the URL.
+  // Problem: init-paystack sometimes falls back to templateId (UUID) instead of the slug
+  // when templateSlug wasn't passed by the client. We detect that case here and resolve
+  // the real slug from the DB so CreateMagazinePage never gets a UUID as a slug.
+  const urlTemplateParam = params.get("templateSlug"); // may be a slug OR a UUID
+
+  // UUID regex — if it matches, we need to resolve it to a slug
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const urlIsUUID = !!urlTemplateParam && UUID_RE.test(urlTemplateParam);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,39 +46,45 @@ export default function TemplatePaymentCallbackPage() {
 
         if (error) throw error;
 
-        // Expect verify-paystack to return { ok: true }
         if (!data?.ok) {
           throw new Error(data?.error || "Unable to verify payment.");
         }
 
         toast.success("Payment verified. Template unlocked!");
 
-        // Redirect priority — cascade until we find something usable:
-        //   1. templateSlug from URL query param (most reliable — put there by init-paystack)
-        //   2. pending_template_slug from localStorage (backup set by useTemplateAccess)
-        //   3. pending_template_id from localStorage (legacy fallback — UUID)
-        //      Note: /create/<uuid> won't resolve with slug-based routing, but it's a last
-        //      resort so the user at least lands somewhere meaningful rather than dashboard.
-        //   4. /dashboard if nothing is available at all
         const localSlug = localStorage.getItem("pending_template_slug");
         const localId   = localStorage.getItem("pending_template_id");
 
-        // Always clean up both keys after reading
         localStorage.removeItem("pending_template_slug");
         localStorage.removeItem("pending_template_id");
 
-        let destination = "/dashboard";
+        // Resolve the best slug we have, in priority order:
+        //   1. urlTemplateParam  — if it's already a slug (not a UUID), use it directly
+        //   2. localSlug         — saved to localStorage by useTemplateAccess before redirect
+        //   3. resolve UUID      — if URL param or localId is a UUID, look up slug from DB
+        //   4. /dashboard        — absolute last resort
+        let resolvedSlug: string | null = null;
 
-        if (urlTemplateSlug) {
-          // Best case: slug came back in the Paystack callback URL
-          destination = `/create/${urlTemplateSlug}`;
+        if (urlTemplateParam && !urlIsUUID) {
+          // URL param is already a clean slug
+          resolvedSlug = urlTemplateParam;
         } else if (localSlug) {
-          // Good case: slug was saved to localStorage before Paystack redirect
-          destination = `/create/${localSlug}`;
-        } else if (localId) {
-          // Legacy fallback: old code stored the UUID — try it anyway
-          destination = `/create/${localId}`;
+          // localStorage had the slug saved before Paystack redirect
+          resolvedSlug = localSlug;
+        } else {
+          // We only have a UUID (from URL or localStorage) — look up the real slug from DB
+          const idToResolve = (urlIsUUID ? urlTemplateParam : null) ?? localId ?? null;
+          if (idToResolve) {
+            const { data: tmpl } = await supabase
+              .from("templates")
+              .select("slug")
+              .eq("id", idToResolve)
+              .maybeSingle();
+            resolvedSlug = tmpl?.slug ?? null;
+          }
         }
+
+        const destination = resolvedSlug ? `/create/${resolvedSlug}` : "/dashboard";
 
         if (!cancelled) {
           navigate(destination, { replace: true });
@@ -86,7 +99,7 @@ export default function TemplatePaymentCallbackPage() {
     return () => {
       cancelled = true;
     };
-  }, [reference, urlTemplateSlug, navigate]);
+  }, [reference, urlTemplateParam, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
@@ -102,15 +115,30 @@ export default function TemplatePaymentCallbackPage() {
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={() => {
-                // Manual navigation — same priority order as the auto-redirect above
-                const slug = urlTemplateSlug || localStorage.getItem("pending_template_slug");
-                const id   = localStorage.getItem("pending_template_id");
-                const destination = slug
-                  ? `/create/${slug}`
-                  : id
-                  ? `/create/${id}`
-                  : "/dashboard";
+              onClick={async () => {
+                // Same resolution priority as the auto-redirect
+                const localSlug = localStorage.getItem("pending_template_slug");
+                const localId   = localStorage.getItem("pending_template_id");
+
+                let resolvedSlug: string | null = null;
+
+                if (urlTemplateParam && !urlIsUUID) {
+                  resolvedSlug = urlTemplateParam;
+                } else if (localSlug) {
+                  resolvedSlug = localSlug;
+                } else {
+                  const idToResolve = (urlIsUUID ? urlTemplateParam : null) ?? localId ?? null;
+                  if (idToResolve) {
+                    const { data: tmpl } = await supabase
+                      .from("templates")
+                      .select("slug")
+                      .eq("id", idToResolve)
+                      .maybeSingle();
+                    resolvedSlug = tmpl?.slug ?? null;
+                  }
+                }
+
+                const destination = resolvedSlug ? `/create/${resolvedSlug}` : "/dashboard";
                 navigate(destination, { replace: true });
               }}
               disabled={loading}

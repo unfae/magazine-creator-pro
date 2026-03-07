@@ -214,8 +214,21 @@ serve(async (req) => {
       });
     }
 
-    // Use slug in callback URL if available, fall back to templateId
-    const callbackIdentifier = templateSlug ?? templateId;
+    // Always look up the slug from the DB — never rely solely on the client sending it.
+    // If the client sent templateSlug we use it directly; otherwise we fetch it.
+    // This guarantees the callback URL always contains the real slug, never a UUID.
+    let resolvedSlug: string | null = templateSlug ?? null;
+    if (!resolvedSlug) {
+      const { data: tmplRow } = await supabaseAdmin
+        .from("templates")
+        .select("slug")
+        .eq("id", templateId)
+        .single();
+      resolvedSlug = tmplRow?.slug ?? null;
+    }
+
+    // Use resolved slug in callback URL; fall back to templateId only if slug is truly missing
+    const callbackIdentifier = resolvedSlug ?? templateId;
     const callbackUrl = `https://www.magznmaker.com/templatepayment/callback?templateSlug=${callbackIdentifier}`;
 
     const res = await fetch("https://api.paystack.co/transaction/initialize", {
