@@ -11,7 +11,8 @@ export default function TemplatePaymentCallbackPage() {
   const [loading, setLoading] = useState(true);
 
   const reference = params.get("reference");
-  // ✅ Reads templateSlug from URL (set by init-paystack in callback_url)
+
+  // ✅ Read slug from URL — set by init-paystack in the callback_url query param
   const urlTemplateSlug = params.get("templateSlug");
 
   useEffect(() => {
@@ -24,6 +25,7 @@ export default function TemplatePaymentCallbackPage() {
           return;
         }
 
+        // Must be logged in so we can associate/confirm access cleanly
         const { data: sessionData } = await supabase.auth.getSession();
         if (!sessionData.session) {
           toast.error("Please sign in to complete payment verification.");
@@ -37,31 +39,39 @@ export default function TemplatePaymentCallbackPage() {
 
         if (error) throw error;
 
+        // Expect verify-paystack to return { ok: true }
         if (!data?.ok) {
           throw new Error(data?.error || "Unable to verify payment.");
         }
 
         toast.success("Payment verified. Template unlocked!");
 
-        // Redirect priority:
-        //   1. templateSlug from URL query param (most reliable — set by init-paystack)
-        //   2. pending_template_slug from localStorage (backup in case Paystack strips query params)
-        //   3. Dashboard fallback — DO NOT fall back to pending_template_id (UUID) since
-        //      routes are now slug-based and /create/<uuid> will 404 with "Template not found"
+        // Redirect priority — cascade until we find something usable:
+        //   1. templateSlug from URL query param (most reliable — put there by init-paystack)
+        //   2. pending_template_slug from localStorage (backup set by useTemplateAccess)
+        //   3. pending_template_id from localStorage (legacy fallback — UUID)
+        //      Note: /create/<uuid> won't resolve with slug-based routing, but it's a last
+        //      resort so the user at least lands somewhere meaningful rather than dashboard.
+        //   4. /dashboard if nothing is available at all
         const localSlug = localStorage.getItem("pending_template_slug");
+        const localId   = localStorage.getItem("pending_template_id");
 
+        // Always clean up both keys after reading
         localStorage.removeItem("pending_template_slug");
-        localStorage.removeItem("pending_template_id");  // clear legacy key too
+        localStorage.removeItem("pending_template_id");
 
         let destination = "/dashboard";
 
         if (urlTemplateSlug) {
+          // Best case: slug came back in the Paystack callback URL
           destination = `/create/${urlTemplateSlug}`;
         } else if (localSlug) {
+          // Good case: slug was saved to localStorage before Paystack redirect
           destination = `/create/${localSlug}`;
+        } else if (localId) {
+          // Legacy fallback: old code stored the UUID — try it anyway
+          destination = `/create/${localId}`;
         }
-        // ✅ No UUID fallback — if we have no slug at all, go to dashboard
-        //    rather than trying /create/<uuid> which breaks slug-based routing
 
         if (!cancelled) {
           navigate(destination, { replace: true });
@@ -73,7 +83,9 @@ export default function TemplatePaymentCallbackPage() {
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [reference, urlTemplateSlug, navigate]);
 
   return (
@@ -86,20 +98,26 @@ export default function TemplatePaymentCallbackPage() {
           <p className="text-sm text-muted-foreground">
             {reference ? `Reference: ${reference}` : "No reference found."}
           </p>
+
           <div className="flex gap-2">
             <Button
               variant="outline"
               onClick={() => {
-                // Manual navigation button — same priority: slug from URL or localStorage
-                const slug =
-                  urlTemplateSlug || localStorage.getItem("pending_template_slug");
-                const destination = slug ? `/create/${slug}` : "/dashboard";
+                // Manual navigation — same priority order as the auto-redirect above
+                const slug = urlTemplateSlug || localStorage.getItem("pending_template_slug");
+                const id   = localStorage.getItem("pending_template_id");
+                const destination = slug
+                  ? `/create/${slug}`
+                  : id
+                  ? `/create/${id}`
+                  : "/dashboard";
                 navigate(destination, { replace: true });
               }}
               disabled={loading}
             >
               Go to template
             </Button>
+
             <Button onClick={() => window.location.reload()} disabled={loading}>
               Retry
             </Button>

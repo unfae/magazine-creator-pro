@@ -20,7 +20,9 @@ export function useTemplateAccess(templatePay: any) {
         return;
       }
 
-      // Free template — always accessible, no export limits
+      // Free template (or 100% discount override from CreateMagazinePage) — always accessible.
+      // CreateMagazinePage passes { ...template, price: 0 } when a 100% discount code is applied,
+      // which triggers this branch and grants access instantly without touching Paystack.
       if (!templatePay?.price || templatePay.price === 0) {
         setHasAccess(true);
         setLoading(false);
@@ -59,18 +61,18 @@ export function useTemplateAccess(templatePay: any) {
     };
 
     checkAccess();
-  }, [templatePay?.id, templatePay?.price]);
+  }, [templatePay?.id, templatePay?.price]);  // re-runs when price changes (catches 100% discount override)
 
   // openPaywall accepts:
-  //   discountCode  — validated code string, passed to init-paystack for server-side re-validation
-  //   finalAmount   — pre-calculated discounted price from the UI:
-  //                   • if undefined  → charges original template price via Paystack
-  //                   • if > 0        → charges the discounted amount via Paystack
-  //                   • if === 0      → 100% discount; init-paystack inserts a success record
-  //                                     directly and returns { free: true } — no Paystack redirect
+  //   discountCode — validated code string, passed to init-paystack for server-side re-validation
+  //   finalAmount  — pre-calculated discounted price from CreateMagazinePage:
+  //                  • undefined  → charges original template price
+  //                  • > 0        → charges the discounted amount
+  //                  • === 0      → should NOT reach here — CreateMagazinePage handles 100%
+  //                                 discounts via the price=0 trick before calling openPaywall
   const openPaywall = async (discountCode?: string, finalAmount?: number) => {
     if (!templatePay) return;
-    if (!templatePay?.price || templatePay.price === 0) return;
+    if (!templatePay?.price || templatePay.price === 0) return;  // free template or 100% discount override — no-op
 
     const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
 
@@ -84,7 +86,8 @@ export function useTemplateAccess(templatePay: any) {
       return;
     }
 
-    // Store slug as backup in case Paystack strips query params from callback URL
+    // Store slug as backup — CreateMagazinePage also calls setSlugBeforePaywall() which is the
+    // primary source. This hook-level write is the fallback in case the component-level one is missed.
     if (templatePay.slug) {
       localStorage.setItem("pending_template_slug", templatePay.slug);
     }
@@ -93,7 +96,7 @@ export function useTemplateAccess(templatePay: any) {
       const { data, error } = await supabase.functions.invoke("init-paystack", {
         body: {
           templateId: templatePay.id,
-          templateSlug: templatePay.slug,        // used in callback URL
+          templateSlug: templatePay.slug,        // used in Paystack callback URL
           // ✅ Use finalAmount if provided (discount applied), else fall back to original price
           amount: finalAmount ?? templatePay.price,
           ...(discountCode ? { discountCode } : {}),
@@ -102,8 +105,9 @@ export function useTemplateAccess(templatePay: any) {
 
       if (error) throw error;
 
-      // ✅ 100% discount path: init-paystack inserted a success record directly — no Paystack needed
-      // Just clean up localStorage and navigate straight back to the template
+      // ✅ 100% discount safety net: init-paystack inserted a success record directly.
+      //    Normally this is handled before openPaywall is called (price=0 trick in CreateMagazinePage),
+      //    but if somehow amount=0 reaches here, clean up and navigate back to the template.
       if (data?.free === true) {
         localStorage.removeItem("pending_template_slug");
         localStorage.removeItem("pending_template_id");

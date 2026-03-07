@@ -86,7 +86,15 @@ export default function CreateMagazinePage() {
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const pageNumbers = templatePages.map((pg) => pg.page_number);
 
-  const templatePay = template;
+  // When a 100% discount code is applied, we pass price: 0 to useTemplateAccess so it
+  // treats the template as free — no Paystack call needed, hasAccess becomes true immediately.
+  const [discountedToFree, setDiscountedToFree] = useState(false);
+
+  // If the user applied a 100% discount code, temporarily treat the template as free.
+  // useTemplateAccess sees price === 0 → sets hasAccess = true immediately.
+  const templatePay = discountedToFree && template
+    ? { ...template, price: 0 }
+    : template;
 
   const { hasTemplateAccess, loading, openPaywall } = useTemplateAccess(templatePay);
 
@@ -150,6 +158,17 @@ export default function CreateMagazinePage() {
       }
 
       finalAmount = Math.round(finalAmount * 100) / 100;
+
+      // ✅ 100% discount — unlock immediately without going to Paystack at all.
+      // We set discountedToFree which makes templatePay.price = 0, which triggers
+      // useTemplateAccess to set hasAccess = true (free template path). No payment needed.
+      if (finalAmount === 0) {
+        setDiscountedToFree(true);
+        setDiscountCode('');
+        setAppliedDiscount(null);
+        toast.success('100% discount applied! Template is now unlocked.');
+        return;
+      }
 
       setAppliedDiscount({
         code: codeRow.code,
