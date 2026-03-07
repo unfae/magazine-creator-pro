@@ -11,7 +11,8 @@ export default function TemplatePaymentCallbackPage() {
   const [loading, setLoading] = useState(true);
 
   const reference = params.get("reference");
-  const urlTemplateSlug = params.get("templateSlug");  // ← now reads slug not id
+  // ✅ Reads templateSlug from URL (set by init-paystack in callback_url)
+  const urlTemplateSlug = params.get("templateSlug");
 
   useEffect(() => {
     let cancelled = false;
@@ -42,12 +43,15 @@ export default function TemplatePaymentCallbackPage() {
 
         toast.success("Payment verified. Template unlocked!");
 
-        // Priority: slug from URL → slug from localStorage → legacy id from localStorage
+        // Redirect priority:
+        //   1. templateSlug from URL query param (most reliable — set by init-paystack)
+        //   2. pending_template_slug from localStorage (backup in case Paystack strips query params)
+        //   3. Dashboard fallback — DO NOT fall back to pending_template_id (UUID) since
+        //      routes are now slug-based and /create/<uuid> will 404 with "Template not found"
         const localSlug = localStorage.getItem("pending_template_slug");
-        const localId = localStorage.getItem("pending_template_id");
 
         localStorage.removeItem("pending_template_slug");
-        localStorage.removeItem("pending_template_id");
+        localStorage.removeItem("pending_template_id");  // clear legacy key too
 
         let destination = "/dashboard";
 
@@ -55,9 +59,9 @@ export default function TemplatePaymentCallbackPage() {
           destination = `/create/${urlTemplateSlug}`;
         } else if (localSlug) {
           destination = `/create/${localSlug}`;
-        } else if (localId) {
-          destination = `/create/${localId}`;
         }
+        // ✅ No UUID fallback — if we have no slug at all, go to dashboard
+        //    rather than trying /create/<uuid> which breaks slug-based routing
 
         if (!cancelled) {
           navigate(destination, { replace: true });
@@ -86,13 +90,10 @@ export default function TemplatePaymentCallbackPage() {
             <Button
               variant="outline"
               onClick={() => {
-                const slug = localStorage.getItem("pending_template_slug");
-                const id = localStorage.getItem("pending_template_id");
-                const destination = slug
-                  ? `/create/${slug}`
-                  : id
-                  ? `/create/${id}`
-                  : "/dashboard";
+                // Manual navigation button — same priority: slug from URL or localStorage
+                const slug =
+                  urlTemplateSlug || localStorage.getItem("pending_template_slug");
+                const destination = slug ? `/create/${slug}` : "/dashboard";
                 navigate(destination, { replace: true });
               }}
               disabled={loading}

@@ -62,9 +62,12 @@ export function useTemplateAccess(templatePay: any) {
   }, [templatePay?.id, templatePay?.price]);
 
   // openPaywall accepts:
-  //   discountCode  — validated code string to pass to init-paystack for server-side re-validation
-  //   finalAmount   — pre-calculated discounted price from the UI; if provided, this is what
-  //                   Paystack will charge instead of the original template price
+  //   discountCode  — validated code string, passed to init-paystack for server-side re-validation
+  //   finalAmount   — pre-calculated discounted price from the UI:
+  //                   • if undefined  → charges original template price via Paystack
+  //                   • if > 0        → charges the discounted amount via Paystack
+  //                   • if === 0      → 100% discount; init-paystack inserts a success record
+  //                                     directly and returns { free: true } — no Paystack redirect
   const openPaywall = async (discountCode?: string, finalAmount?: number) => {
     if (!templatePay) return;
     if (!templatePay?.price || templatePay.price === 0) return;
@@ -98,6 +101,15 @@ export function useTemplateAccess(templatePay: any) {
       });
 
       if (error) throw error;
+
+      // ✅ 100% discount path: init-paystack inserted a success record directly — no Paystack needed
+      // Just clean up localStorage and navigate straight back to the template
+      if (data?.free === true) {
+        localStorage.removeItem("pending_template_slug");
+        localStorage.removeItem("pending_template_id");
+        window.location.href = `/create/${templatePay.slug}`;
+        return;
+      }
 
       const authorizationUrl = data?.data?.authorization_url;
 

@@ -85,7 +85,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Validate discount code if provided
+    // Validate and apply discount code if provided
     let finalAmount = Number(amount);
     let discountCodeId: string | null = null;
     let originalAmount: number | null = null;
@@ -106,6 +106,7 @@ serve(async (req) => {
         });
       }
 
+      // Check expiry
       if (codeRow.expires_at && new Date(codeRow.expires_at) < new Date()) {
         return new Response(JSON.stringify({ error: "Discount code has expired" }), {
           status: 400,
@@ -113,6 +114,7 @@ serve(async (req) => {
         });
       }
 
+      // Check max uses
       if (codeRow.max_uses !== null && codeRow.uses_count >= codeRow.max_uses) {
         return new Response(JSON.stringify({ error: "Discount code has reached its usage limit" }), {
           status: 400,
@@ -120,18 +122,68 @@ serve(async (req) => {
         });
       }
 
+      // Apply discount
       originalAmount = finalAmount;
       discountCodeId = codeRow.id;
 
       if (codeRow.discount_type === "percent") {
         finalAmount = finalAmount * (1 - codeRow.discount_value / 100);
       } else {
+        // fixed
         finalAmount = Math.max(0, finalAmount - codeRow.discount_value);
       }
 
       finalAmount = Math.round(finalAmount * 100) / 100;
     }
 
+    // ✅ 100% discount path — skip Paystack entirely
+    // Insert a success payment record directly and return { free: true }
+    // so the client can redirect straight back to the template without a payment page
+    if (finalAmount === 0) {
+      const { error: insertErr } = await supabaseAdmin
+        .from("template_payments")
+        .insert({
+          user_id: userId,
+          template_id: templateId,
+          provider: "free",                  // marks this as a free/discounted unlock
+          provider_reference: crypto.randomUUID(),
+          amount: 0,
+          original_amount: originalAmount,
+          discount_code_id: discountCodeId,
+          status: "success",                 // granted immediately — no payment needed
+        });
+
+      if (insertErr) {
+        return new Response(JSON.stringify({ error: insertErr.message }), {
+          status: 500,
+          headers: { ...headers, "Content-Type": "application/json" },
+        });
+      }
+
+      // Increment discount code uses_count since verify-paystack won't run for free unlocks
+      if (discountCodeId) {
+        const { data: codeRow } = await supabaseAdmin
+          .from("template_discount_codes")
+          .select("uses_count")
+          .eq("id", discountCodeId)
+          .single();
+
+        if (codeRow) {
+          await supabaseAdmin
+            .from("template_discount_codes")
+            .update({ uses_count: codeRow.uses_count + 1 })
+            .eq("id", discountCodeId);
+        }
+      }
+
+      // Return free flag — client will navigate directly to the template
+      return new Response(JSON.stringify({ free: true }), {
+        status: 200,
+        headers: { ...headers, "Content-Type": "application/json" },
+      });
+    }
+
+    // Standard paid path — initialize Paystack transaction
     const reference = crypto.randomUUID();
 
     const { error: insertErr } = await supabaseAdmin
@@ -174,7 +226,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         email: userEmail,
-        amount: Math.round(finalAmount * 100),
+        amount: Math.round(finalAmount * 100),  // Paystack expects kobo (amount * 100)
         reference,
         callback_url: callbackUrl,
         metadata: { template_id: templateId, template_slug: templateSlug, user_id: userId },
