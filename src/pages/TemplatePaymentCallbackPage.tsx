@@ -8,162 +8,96 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export default function TemplatePaymentCallbackPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-
-  // 🔍 SYNC debug — runs before any useEffect, survives navigation
-  // Check dashboard: localStorage.getItem("__mount_debug__")
-  localStorage.setItem("__mount_debug__", JSON.stringify({
-    mounted: true,
-    url: window.location.href,
-    time: new Date().toISOString(),
-  }));
+  const [status, setStatus] = useState<"verifying" | "success" | "error">("verifying");
+  const [errorMsg, setErrorMsg] = useState("");
 
   const reference = params.get("reference");
 
-  // Paystack puts whatever was in callback_url back into the URL.
-  // Problem: init-paystack sometimes falls back to templateId (UUID) instead of the slug
-  // when templateSlug wasn't passed by the client. We detect that case here and resolve
-  // the real slug from the DB so CreateMagazinePage never gets a UUID as a slug.
-  const urlTemplateParam = params.get("templateSlug"); // may be a slug OR a UUID
-
-  // UUID regex — if it matches, we need to resolve it to a slug
-  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  const urlIsUUID = !!urlTemplateParam && UUID_RE.test(urlTemplateParam);
-
   useEffect(() => {
-    let cancelled = false;
+    if (!reference) {
+      setStatus("error");
+      setErrorMsg("No payment reference found.");
+      return;
+    }
 
     (async () => {
       try {
-        if (!reference) {
-          toast.error("Missing payment reference.");
-          return;
-        }
-
-        // Must be logged in so we can associate/confirm access cleanly
+        // 1. Check session
         const { data: sessionData } = await supabase.auth.getSession();
         if (!sessionData.session) {
-          toast.error("Please sign in to complete payment verification.");
-          navigate(`/auth?mode=login`, { replace: true });
+          navigate("/auth?mode=login", { replace: true });
           return;
         }
 
+        // 2. Call verify-paystack
         const { data, error } = await supabase.functions.invoke("verify-paystack", {
           body: { reference },
         });
 
-        if (error) throw error;
+        if (error) throw new Error(error.message);
+        if (!data?.ok) throw new Error(data?.error || "Payment verification failed.");
 
-        if (!data?.ok) {
-          throw new Error(data?.error || "Unable to verify payment.");
+        toast.success("Payment verified! Template unlocked.");
+
+        // 3. Get slug — verify-paystack returns it directly from DB (most reliable)
+        const slug: string | null = data?.templateSlug ?? null;
+
+        if (slug) {
+          navigate(`/create/${slug}`, { replace: true });
+          return;
         }
 
-        toast.success("Payment verified. Template unlocked!");
+        // 4. Fallback: look up slug from template_id on the payment row
+        const templateId: string | null = data?.payment?.template_id ?? null;
+        if (templateId) {
+          const { data: tmpl } = await supabase
+            .from("templates")
+            .select("slug")
+            .eq("id", templateId)
+            .maybeSingle();
 
-        const responseSlug: string | null = data?.templateSlug ?? null;
-        const localSlug = localStorage.getItem("pending_template_slug");
-        const localId   = localStorage.getItem("pending_template_id");
-
-        // 🔍 DEBUG — persists to localStorage so it survives the navigation
-        const debugInfo = {
-          responseSlug,
-          urlTemplateParam,
-          urlIsUUID,
-          localSlug,
-          localId,
-          fullData: data,
-        };
-        console.log("[redirect debug]", debugInfo);
-        localStorage.setItem("__redirect_debug__", JSON.stringify(debugInfo));
-
-        localStorage.removeItem("pending_template_slug");
-        localStorage.removeItem("pending_template_id");
-
-        let resolvedSlug: string | null = null;
-
-        if (responseSlug) {
-          resolvedSlug = responseSlug;
-        } else if (urlTemplateParam && !urlIsUUID) {
-          resolvedSlug = urlTemplateParam;
-        } else if (localSlug) {
-          resolvedSlug = localSlug;
-        } else {
-          const idToResolve = (urlIsUUID ? urlTemplateParam : null) ?? localId ?? null;
-          if (idToResolve) {
-            const { data: tmpl } = await supabase
-              .from("templates")
-              .select("slug")
-              .eq("id", idToResolve)
-              .maybeSingle();
-            resolvedSlug = tmpl?.slug ?? null;
-            console.log("[redirect debug] DB slug lookup result:", resolvedSlug, "for id:", idToResolve);
+          if (tmpl?.slug) {
+            navigate(`/create/${tmpl.slug}`, { replace: true });
+            return;
           }
         }
 
-        console.log("[redirect debug] final resolvedSlug:", resolvedSlug);
-        const destination = resolvedSlug ? `/create/${resolvedSlug}` : "/dashboard";
+        // 5. Last resort
+        navigate("/dashboard", { replace: true });
 
-        if (!cancelled) {
-          navigate(destination, { replace: true });
-        }
       } catch (e: any) {
+        setStatus("error");
+        setErrorMsg(e?.message || "Something went wrong.");
         toast.error(e?.message || "Payment verification failed.");
-      } finally {
-        if (!cancelled) setLoading(false);
       }
     })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [reference, urlTemplateParam, navigate]);
+  }, [reference]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Confirming payment…</CardTitle>
+          <CardTitle>
+            {status === "error" ? "Payment Error" : "Confirming payment…"}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            {reference ? `Reference: ${reference}` : "No reference found."}
-          </p>
+          {status === "error" ? (
+            <p className="text-sm text-destructive">{errorMsg}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Please wait while we verify your payment…
+            </p>
+          )}
 
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={async () => {
-                // Same resolution priority as the auto-redirect
-                const localSlug = localStorage.getItem("pending_template_slug");
-                const localId   = localStorage.getItem("pending_template_id");
-
-                let resolvedSlug: string | null = null;
-
-                if (urlTemplateParam && !urlIsUUID) {
-                  resolvedSlug = urlTemplateParam;
-                } else if (localSlug) {
-                  resolvedSlug = localSlug;
-                } else {
-                  const idToResolve = (urlIsUUID ? urlTemplateParam : null) ?? localId ?? null;
-                  if (idToResolve) {
-                    const { data: tmpl } = await supabase
-                      .from("templates")
-                      .select("slug")
-                      .eq("id", idToResolve)
-                      .maybeSingle();
-                    resolvedSlug = tmpl?.slug ?? null;
-                  }
-                }
-
-                const destination = resolvedSlug ? `/create/${resolvedSlug}` : "/dashboard";
-                navigate(destination, { replace: true });
-              }}
-              disabled={loading}
+              onClick={() => navigate("/dashboard", { replace: true })}
             >
-              Go to template
+              Go to Dashboard
             </Button>
-
-            <Button onClick={() => window.location.reload()} disabled={loading}>
+            <Button onClick={() => window.location.reload()}>
               Retry
             </Button>
           </div>
