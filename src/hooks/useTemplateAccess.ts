@@ -5,29 +5,27 @@ import { FunctionsHttpError } from "@supabase/supabase-js";
 export function useTemplateAccess(templatePay: any) {
   const [hasAccess, setHasAccess] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [exportsUsed, setExportsUsed] = useState(0);
+  const [maxExports, setMaxExports] = useState(7);
+
+  const exportLimitReached = hasAccess && exportsUsed >= maxExports;
+  const remainingExports = Math.max(0, maxExports - exportsUsed);
 
   useEffect(() => {
     const checkAccess = async () => {
-      // If template isn't loaded yet, don't block the UI—just wait.
       if (!templatePay) {
         setLoading(false);
         setHasAccess(true);
         return;
       }
 
-      // Free template => always accessible
       if (!templatePay?.price || templatePay.price === 0) {
         setHasAccess(true);
         setLoading(false);
         return;
       }
 
-      // Paid template => must be logged in + have payment record
-      const {
-        data: { user },
-        error: userErr,
-      } = await supabase.auth.getUser();
-
+      const { data: { user }, error: userErr } = await supabase.auth.getUser();
       if (userErr) console.error(userErr);
 
       if (!user) {
@@ -38,7 +36,7 @@ export function useTemplateAccess(templatePay: any) {
 
       const { data, error } = await supabase
         .from("template_payments")
-        .select("id")
+        .select("id, exports_used, max_exports")
         .eq("user_id", user.id)
         .eq("template_id", templatePay.id)
         .eq("status", "success")
@@ -46,23 +44,25 @@ export function useTemplateAccess(templatePay: any) {
 
       if (error) console.error(error);
 
-      setHasAccess(!!data);
+      if (data) {
+        setHasAccess(true);
+        setExportsUsed(data.exports_used ?? 0);
+        setMaxExports(data.max_exports ?? 7);
+      } else {
+        setHasAccess(false);
+      }
+
       setLoading(false);
     };
 
     checkAccess();
   }, [templatePay?.id, templatePay?.price]);
 
-  const openPaywall = async () => {
+  const openPaywall = async (discountCode?: string) => {
     if (!templatePay) return;
     if (!templatePay?.price || templatePay.price === 0) return;
 
-    const {
-      data: { session },
-      error: sessionErr,
-    } = await supabase.auth.getSession();
-
-    console.log("session from client", session, sessionErr);
+    const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
 
     if (sessionErr) {
       console.error(sessionErr);
@@ -74,14 +74,19 @@ export function useTemplateAccess(templatePay: any) {
       return;
     }
 
-    // Store templateId so we can read it after callback
-    if (templatePay.id) {
-      localStorage.setItem("pending_template_id", templatePay.id);
+    // Store slug as backup in case Paystack strips query params from callback URL
+    if (templatePay.slug) {
+      localStorage.setItem("pending_template_slug", templatePay.slug);
     }
 
     try {
       const { data, error } = await supabase.functions.invoke("init-paystack", {
-        body: { templateId: templatePay.id, amount: templatePay.price },
+        body: {
+          templateId: templatePay.id,
+          templateSlug: templatePay.slug,   // ← pass slug so it's used in callback URL
+          amount: templatePay.price,
+          ...(discountCode ? { discountCode } : {}),
+        },
       });
 
       if (error) throw error;
@@ -104,5 +109,13 @@ export function useTemplateAccess(templatePay: any) {
     }
   };
 
-  return { hasTemplateAccess: hasAccess, loading, openPaywall };
+  return {
+    hasTemplateAccess: hasAccess,
+    loading,
+    openPaywall,
+    exportsUsed,
+    maxExports,
+    remainingExports,
+    exportLimitReached,
+  };
 }
