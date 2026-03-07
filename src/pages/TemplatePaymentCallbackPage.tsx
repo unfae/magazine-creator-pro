@@ -52,13 +52,19 @@ export default function TemplatePaymentCallbackPage() {
 
         toast.success("Payment verified. Template unlocked!");
 
-        // ✅ Primary source: verify-paystack now returns templateSlug directly from the DB.
-        // This is the most reliable source — no dependency on Paystack preserving URL params
-        // or localStorage surviving the redirect.
-        // Fallbacks are kept for safety but should rarely (never) be needed.
         const responseSlug: string | null = data?.templateSlug ?? null;
         const localSlug = localStorage.getItem("pending_template_slug");
         const localId   = localStorage.getItem("pending_template_id");
+
+        // 🔍 DEBUG — remove after redirect is confirmed working
+        console.log("[redirect debug]", {
+          responseSlug,
+          urlTemplateParam,
+          urlIsUUID,
+          localSlug,
+          localId,
+          fullData: data,
+        });
 
         localStorage.removeItem("pending_template_slug");
         localStorage.removeItem("pending_template_id");
@@ -66,16 +72,12 @@ export default function TemplatePaymentCallbackPage() {
         let resolvedSlug: string | null = null;
 
         if (responseSlug) {
-          // Best: came straight from verify-paystack DB lookup
           resolvedSlug = responseSlug;
         } else if (urlTemplateParam && !urlIsUUID) {
-          // URL param is a clean slug (not a UUID)
           resolvedSlug = urlTemplateParam;
         } else if (localSlug) {
-          // localStorage had the slug saved before Paystack redirect
           resolvedSlug = localSlug;
         } else {
-          // Last resort: resolve a UUID to a slug via DB
           const idToResolve = (urlIsUUID ? urlTemplateParam : null) ?? localId ?? null;
           if (idToResolve) {
             const { data: tmpl } = await supabase
@@ -84,9 +86,11 @@ export default function TemplatePaymentCallbackPage() {
               .eq("id", idToResolve)
               .maybeSingle();
             resolvedSlug = tmpl?.slug ?? null;
+            console.log("[redirect debug] DB slug lookup result:", resolvedSlug, "for id:", idToResolve);
           }
         }
 
+        console.log("[redirect debug] final resolvedSlug:", resolvedSlug);
         const destination = resolvedSlug ? `/create/${resolvedSlug}` : "/dashboard";
 
         if (!cancelled) {
