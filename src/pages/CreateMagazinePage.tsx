@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Upload, X, Image, ArrowLeft, Sparkles, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { Upload, X, Image, ArrowLeft, Sparkles, ChevronLeft, ChevronRight, Download, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTemplateAccess } from '@/hooks/useTemplateAccess'
 import { cn } from '@/lib/utils';
@@ -94,6 +94,9 @@ export default function CreateMagazinePage() {
   const [userTexts, setUserTexts] = useState<Record<number, Record<string, string>>>({});
   const [bulkTextValues, setBulkTextValues] = useState<Record<string, string>>({});
 
+  // Discount code state for the paywall UI
+  const [discountCode, setDiscountCode] = useState('');
+
   const currentSlotTargetRef = useRef<{ pageNumber: number; slotId: string } | null>(null);
 
   const PREVIEW_SCALE = 0.3;
@@ -101,6 +104,9 @@ export default function CreateMagazinePage() {
   const PAGE_HEIGHT = 1415;
 
   const { exportVideo, isExportingVideo } = useVideoExport();  // ✅ Add this
+
+  // Helper: is this a paid template?
+  const isPaidTemplate = (template?.price ?? 0) > 0;
 
 
   useEffect(() => {
@@ -231,6 +237,7 @@ export default function CreateMagazinePage() {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!hasTemplateAccess) {
+      // ✅ Wrapped in arrow function — prevents click event being passed as discountCode
       openPaywall();
       return;
     }
@@ -416,6 +423,7 @@ export default function CreateMagazinePage() {
     if (ib && ib.editable === false) return;
 
     if (!hasTemplateAccess) {
+      // ✅ Called programmatically — safe, not an event handler
       openPaywall();
       return;
     }
@@ -736,6 +744,7 @@ export default function CreateMagazinePage() {
           templateName: template.name,
           exportType: 'pdf',
           pageCount: templatePages.length,
+          isPaidTemplate,  // ✅ pass paid flag for export count tracking
           meta: { templateSlug: template.slug },
         });
       } catch (e) {
@@ -752,7 +761,6 @@ export default function CreateMagazinePage() {
       setIsGenerating(false);
     }
   };
-
 
 
 
@@ -847,6 +855,24 @@ export default function CreateMagazinePage() {
 
       // Hand off to Shotstack (IMPORTANT: pass toastId + current progress)
       await exportVideo(pageUrls, template, user.id, toastId, progress);
+
+      try {
+        // ✅ Log video export with paid flag
+        await logTemplateExport({
+          userId: user.id,
+          userEmail: user.email,
+          userName: user.user_metadata?.full_name,
+          templateId: template.id,
+          templateName: template.name,
+          exportType: 'video',
+          pageCount: templatePages.length,
+          isPaidTemplate,
+          meta: { templateSlug: template.slug },
+        });
+      } catch (e) {
+        console.error('Export logging failed', e);
+      }
+
     } catch (err) {
       console.error(err);
       stopTick = true;
@@ -865,11 +891,6 @@ export default function CreateMagazinePage() {
       setIsGenerating(false);
     }
   };
-
-
-
-
-
 
 
 
@@ -913,22 +934,37 @@ export default function CreateMagazinePage() {
           </div>
         ) : null}
 
-
-
       </div>
 
+      {/* Paywall card — shown when template is paid and user hasn't unlocked it yet */}
       {template?.price > 0 && !hasTemplateAccess && !loading && (
         <Card className="mb-6">
-          <div className="p-6 flex items-center justify-between gap-4">
-            <div>
-              <p className="font-medium">This template is paid.</p>
-              <p className="text-sm text-muted-foreground">
-                Cost: ₦{Number(template.price).toLocaleString()}
-              </p>
+          <div className="p-6">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div>
+                <p className="font-medium">This template is paid.</p>
+                <p className="text-sm text-muted-foreground">
+                  Cost: ₦{Number(template.price).toLocaleString()}
+                </p>
+              </div>
+              {/* ✅ Fixed: wrapped in arrow function so click event isn't passed as discountCode */}
+              <Button variant="gold" onClick={() => openPaywall(discountCode.trim() || undefined)}>
+                Unlock Template
+              </Button>
             </div>
-            <Button variant="gold" onClick={openPaywall}>
-              Unlock Template
-            </Button>
+
+            {/* Minimal discount code input */}
+            <div className="flex items-center gap-2 max-w-xs">
+              <div className="relative flex-1">
+                <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  value={discountCode}
+                  onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                  placeholder="Discount code"
+                  className="pl-8 h-8 text-sm uppercase tracking-wider placeholder:normal-case placeholder:tracking-normal"
+                />
+              </div>
+            </div>
           </div>
         </Card>
       )}
@@ -1114,7 +1150,7 @@ export default function CreateMagazinePage() {
           <div className="mb-4">
             <label className="block text-sm font-medium mb-2">Bulk Image Upload</label>
             <p className="text-sm text-muted-foreground mb-3">
-              Upload your photos and we’ll auto-fit them into the template. You can fine-tune each page after. 
+              Upload your photos and we'll auto-fit them into the template. You can fine-tune each page after. 
               If using an older phone, Upload in batches of 5 for smoother performance.
             </p>
             <input
