@@ -10,6 +10,14 @@ export default function TemplatePaymentCallbackPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
 
+  // 🔍 SYNC debug — runs before any useEffect, survives navigation
+  // Check dashboard: localStorage.getItem("__mount_debug__")
+  localStorage.setItem("__mount_debug__", JSON.stringify({
+    mounted: true,
+    url: window.location.href,
+    time: new Date().toISOString(),
+  }));
+
   const reference = params.get("reference");
 
   // Paystack puts whatever was in callback_url back into the URL.
