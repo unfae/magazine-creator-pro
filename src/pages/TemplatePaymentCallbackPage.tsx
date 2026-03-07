@@ -52,27 +52,30 @@ export default function TemplatePaymentCallbackPage() {
 
         toast.success("Payment verified. Template unlocked!");
 
+        // ✅ Primary source: verify-paystack now returns templateSlug directly from the DB.
+        // This is the most reliable source — no dependency on Paystack preserving URL params
+        // or localStorage surviving the redirect.
+        // Fallbacks are kept for safety but should rarely (never) be needed.
+        const responseSlug: string | null = data?.templateSlug ?? null;
         const localSlug = localStorage.getItem("pending_template_slug");
         const localId   = localStorage.getItem("pending_template_id");
 
         localStorage.removeItem("pending_template_slug");
         localStorage.removeItem("pending_template_id");
 
-        // Resolve the best slug we have, in priority order:
-        //   1. urlTemplateParam  — if it's already a slug (not a UUID), use it directly
-        //   2. localSlug         — saved to localStorage by useTemplateAccess before redirect
-        //   3. resolve UUID      — if URL param or localId is a UUID, look up slug from DB
-        //   4. /dashboard        — absolute last resort
         let resolvedSlug: string | null = null;
 
-        if (urlTemplateParam && !urlIsUUID) {
-          // URL param is already a clean slug
+        if (responseSlug) {
+          // Best: came straight from verify-paystack DB lookup
+          resolvedSlug = responseSlug;
+        } else if (urlTemplateParam && !urlIsUUID) {
+          // URL param is a clean slug (not a UUID)
           resolvedSlug = urlTemplateParam;
         } else if (localSlug) {
           // localStorage had the slug saved before Paystack redirect
           resolvedSlug = localSlug;
         } else {
-          // We only have a UUID (from URL or localStorage) — look up the real slug from DB
+          // Last resort: resolve a UUID to a slug via DB
           const idToResolve = (urlIsUUID ? urlTemplateParam : null) ?? localId ?? null;
           if (idToResolve) {
             const { data: tmpl } = await supabase

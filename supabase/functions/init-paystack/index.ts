@@ -91,7 +91,7 @@ serve(async (req) => {
     // We do NOT re-apply the discount math here to avoid double-discounting.
     let finalAmount = Number(amount);
     let discountCodeId: string | null = null;
-    const originalAmount: number | null = discountCode ? finalAmount : null;
+    let originalAmount: number | null = null;
 
     if (discountCode && typeof discountCode === "string") {
       const { data: codeRow } = await supabaseAdmin
@@ -104,6 +104,17 @@ serve(async (req) => {
 
       // Record the code ID for tracking — validation already happened client-side
       discountCodeId = codeRow?.id ?? null;
+
+      // Fetch the real original price from the templates table so original_amount
+      // always reflects the full price before any discount was applied.
+      if (discountCodeId) {
+        const { data: tmplRow } = await supabaseAdmin
+          .from("templates")
+          .select("price")
+          .eq("id", templateId)
+          .maybeSingle();
+        originalAmount = tmplRow?.price != null ? Number(tmplRow.price) : null;
+      }
     }
 
     // ✅ 100% discount path — skip Paystack entirely
