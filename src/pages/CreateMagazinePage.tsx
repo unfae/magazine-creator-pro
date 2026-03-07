@@ -315,8 +315,72 @@ export default function CreateMagazinePage() {
 
   if (loadingTemplate) {
     return (
-      <div className="container mx-auto px-4 py-12 text-center">
-        <p className="text-muted-foreground">Loading template...</p>
+      <div className="container mx-auto px-4 py-8 max-w-5xl animate-pulse">
+        {/* Back button skeleton */}
+        <div className="h-5 w-36 rounded bg-muted mb-6" />
+
+        {/* Header section skeleton */}
+        <div className="mb-6">
+          <div className="h-8 w-72 rounded bg-muted mb-3" />
+          <div className="h-4 w-96 rounded bg-muted mb-2" />
+          <div className="h-4 w-48 rounded bg-muted mt-3" />
+        </div>
+
+        {/* Paywall card skeleton */}
+        <div className="rounded-xl border bg-card mb-6 p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-2">
+              <div className="h-4 w-44 rounded bg-muted" />
+              <div className="h-3 w-28 rounded bg-muted" />
+            </div>
+            <div className="h-9 w-36 rounded bg-gold/10" />
+          </div>
+        </div>
+
+        {/* Page preview skeleton */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div className="h-4 w-40 rounded bg-muted" />
+            <div className="flex gap-2">
+              <div className="h-8 w-8 rounded-md bg-muted" />
+              <div className="h-8 w-8 rounded-md bg-muted" />
+            </div>
+          </div>
+          <div className="flex gap-6 overflow-hidden">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="flex-shrink-0 rounded-lg bg-muted"
+                style={{ width: PAGE_WIDTH * PREVIEW_SCALE, height: PAGE_HEIGHT * PREVIEW_SCALE }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Controls card skeleton */}
+        <div className="rounded-xl border bg-card mb-6 p-6 space-y-6">
+          {/* Title input */}
+          <div>
+            <div className="h-4 w-32 rounded bg-muted mb-2" />
+            <div className="h-10 w-80 rounded-lg bg-muted" />
+          </div>
+          {/* Bulk upload */}
+          <div>
+            <div className="h-4 w-36 rounded bg-muted mb-2" />
+            <div className="h-24 w-full rounded-lg bg-muted" />
+          </div>
+          {/* Bulk text edit */}
+          <div>
+            <div className="h-4 w-28 rounded bg-muted mb-2" />
+            <div className="h-10 w-full rounded-lg bg-muted" />
+          </div>
+        </div>
+
+        {/* Export buttons skeleton */}
+        <div className="flex justify-end gap-3 mt-4">
+          <div className="h-9 w-36 rounded-lg bg-muted" />
+          <div className="h-9 w-28 rounded-lg bg-gold/10" />
+        </div>
       </div>
     );
   }
@@ -1038,107 +1102,128 @@ export default function CreateMagazinePage() {
 
       </div>
 
-      {/* Paywall card — shown when template is paid and user hasn't unlocked it yet */}
-      {template?.price > 0 && !hasTemplateAccess && !loading && (
+      {/* Paywall card — shown as soon as template.price > 0 is known.
+           We no longer gate on !loading (useTemplateAccess loading) because that causes
+           a second network-wait delay. Instead:
+           • While loading=true  → show a skeleton so the card appears immediately
+           • While loading=false and hasAccess → hide the card entirely
+           • While loading=false and !hasAccess → show the full paywall UI */}
+      {template?.price > 0 && !hasTemplateAccess && (
         <Card className="mb-6">
           <div className="p-6">
 
-            {/* Price row — stacks on mobile, side by side on desktop */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-              <div>
-                <p className="font-medium">This template is paid.</p>
+            {/* Skeleton state — access check is still in flight */}
+            {loading && (
+              <div className="flex items-center justify-between gap-4 animate-pulse">
+                <div className="space-y-2">
+                  <div className="h-4 w-44 rounded bg-muted" />
+                  <div className="h-3 w-28 rounded bg-muted" />
+                </div>
+                <div className="h-9 w-36 rounded bg-muted" />
+              </div>
+            )}
 
-                {/* Show original + discounted price if a code is applied, else just original */}
-                {appliedDiscount ? (
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <p className="text-sm text-muted-foreground line-through">
-                      ₦{Number(template.price).toLocaleString()}
-                    </p>
-                    <p className="text-sm font-semibold text-gold">
-                      ₦{appliedDiscount.finalAmount.toLocaleString()}
-                    </p>
-                    {appliedDiscount.discountType === 'percent' ? (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-gold/10 text-gold font-medium">
-                        {appliedDiscount.discountValue}% off
-                      </span>
+            {/* Full paywall UI — access check complete, user has not paid */}
+            {!loading && (
+              <>
+                {/* Price row — stacks on mobile, side by side on desktop */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+                  <div>
+                    <p className="font-medium">This template is paid.</p>
+
+                    {/* Show original + discounted price if a code is applied, else just original */}
+                    {appliedDiscount ? (
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-sm text-muted-foreground line-through">
+                          ₦{Number(template.price).toLocaleString()}
+                        </p>
+                        <p className="text-sm font-semibold text-gold">
+                          ₦{appliedDiscount.finalAmount.toLocaleString()}
+                        </p>
+                        {appliedDiscount.discountType === 'percent' ? (
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-gold/10 text-gold font-medium">
+                            {appliedDiscount.discountValue}% off
+                          </span>
+                        ) : (
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-gold/10 text-gold font-medium">
+                            ₦{appliedDiscount.discountValue.toLocaleString()} off
+                          </span>
+                        )}
+                      </div>
                     ) : (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-gold/10 text-gold font-medium">
-                        ₦{appliedDiscount.discountValue.toLocaleString()} off
-                      </span>
+                      <p className="text-sm text-muted-foreground">
+                        Cost: ₦{Number(template.price).toLocaleString()}
+                      </p>
                     )}
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Cost: ₦{Number(template.price).toLocaleString()}
-                  </p>
-                )}
-              </div>
 
-              {/* Unlock button — desktop only (shown beside price) */}
-              {/* ✅ Passes finalAmount so Paystack receives the discounted price, not the original */}
-              <Button
-                variant="gold"
-                className="hidden sm:inline-flex"
-                onClick={() => openPaywall(
-                  appliedDiscount?.code || discountCode.trim() || undefined,
-                  appliedDiscount?.finalAmount
-                )}
-              >
-                Unlock Template
-              </Button>
-            </div>
+                  {/* Unlock button — desktop only (shown beside price) */}
+                  {/* ✅ Passes finalAmount so Paystack receives the discounted price, not the original */}
+                  <Button
+                    variant="gold"
+                    className="hidden sm:inline-flex"
+                    onClick={() => openPaywall(
+                      appliedDiscount?.code || discountCode.trim() || undefined,
+                      appliedDiscount?.finalAmount
+                    )}
+                  >
+                    Unlock Template
+                  </Button>
+                </div>
 
-            {/* Discount code input + Apply/Remove */}
-            <div className="flex items-center gap-2 max-w-xs">
-              <div className="relative flex-1">
-                <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  value={discountCode}
-                  onChange={(e) => {
-                    setDiscountCode(e.target.value.toUpperCase());
-                    // Clear applied discount if code is changed
-                    if (appliedDiscount) setAppliedDiscount(null);
-                  }}
-                  onKeyDown={(e) => e.key === 'Enter' && handleApplyDiscountCode()}
-                  placeholder="Discount code"
-                  className="pl-8 h-8 text-sm uppercase tracking-wider placeholder:normal-case placeholder:tracking-normal"
-                />
-              </div>
+                {/* Discount code input + Apply/Remove */}
+                <div className="flex items-center gap-2 max-w-xs">
+                  <div className="relative flex-1">
+                    <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      value={discountCode}
+                      onChange={(e) => {
+                        setDiscountCode(e.target.value.toUpperCase());
+                        // Clear applied discount if code is changed
+                        if (appliedDiscount) setAppliedDiscount(null);
+                      }}
+                      onKeyDown={(e) => e.key === 'Enter' && handleApplyDiscountCode()}
+                      placeholder="Discount code"
+                      className="pl-8 h-8 text-sm uppercase tracking-wider placeholder:normal-case placeholder:tracking-normal"
+                    />
+                  </div>
 
-              {/* Underline text Apply button */}
-              {discountCode.trim() && !appliedDiscount && (
-                <button
-                  onClick={handleApplyDiscountCode}
-                  disabled={isApplyingCode}
-                  className="text-sm text-gold underline underline-offset-2 hover:text-gold/80 transition-colors shrink-0 disabled:opacity-50"
+                  {/* Underline text Apply button */}
+                  {discountCode.trim() && !appliedDiscount && (
+                    <button
+                      onClick={handleApplyDiscountCode}
+                      disabled={isApplyingCode}
+                      className="text-sm text-gold underline underline-offset-2 hover:text-gold/80 transition-colors shrink-0 disabled:opacity-50"
+                    >
+                      {isApplyingCode ? 'Applying...' : 'Apply'}
+                    </button>
+                  )}
+
+                  {/* Show a remove link if code is already applied */}
+                  {appliedDiscount && (
+                    <button
+                      onClick={() => { setAppliedDiscount(null); setDiscountCode(''); }}
+                      className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors shrink-0"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+
+                {/* Unlock button — mobile only (shown below discount input) */}
+                {/* ✅ Same fix: passes finalAmount so Paystack receives the discounted price */}
+                <Button
+                  variant="gold"
+                  className="mt-4 w-full sm:hidden"
+                  onClick={() => openPaywall(
+                    appliedDiscount?.code || discountCode.trim() || undefined,
+                    appliedDiscount?.finalAmount
+                  )}
                 >
-                  {isApplyingCode ? 'Applying...' : 'Apply'}
-                </button>
-              )}
-
-              {/* Show a remove link if code is already applied */}
-              {appliedDiscount && (
-                <button
-                  onClick={() => { setAppliedDiscount(null); setDiscountCode(''); }}
-                  className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors shrink-0"
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-
-            {/* Unlock button — mobile only (shown below discount input) */}
-            {/* ✅ Same fix: passes finalAmount so Paystack receives the discounted price */}
-            <Button
-              variant="gold"
-              className="mt-4 w-full sm:hidden"
-              onClick={() => openPaywall(
-                appliedDiscount?.code || discountCode.trim() || undefined,
-                appliedDiscount?.finalAmount
-              )}
-            >
-              Unlock Template
-            </Button>
+                  Unlock Template
+                </Button>
+              </>
+            )}
 
           </div>
         </Card>

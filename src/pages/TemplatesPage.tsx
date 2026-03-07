@@ -6,6 +6,30 @@ import { Search, ArrowRight } from 'lucide-react';
 
 const categories = ['All', 'Fashion', 'Travel', 'Family', 'Memories', 'Wedding', 'Faith'] as const;
 
+// Skeleton for a single template card — mirrors the real TemplateCard dimensions/layout
+function TemplateCardSkeleton() {
+  return (
+    <div className="rounded-xl border bg-card overflow-hidden animate-pulse">
+      {/* Thumbnail area */}
+      <div className="aspect-[3/4] w-full bg-muted" />
+      {/* Card body */}
+      <div className="p-3 space-y-2">
+        {/* Category + price row */}
+        <div className="flex items-center justify-between">
+          <div className="h-3 w-16 rounded bg-muted" />
+          <div className="h-5 w-14 rounded-full bg-gold/10" />
+        </div>
+        {/* Template name */}
+        <div className="h-4 w-3/4 rounded bg-muted" />
+        {/* Usage count */}
+        <div className="h-3 w-20 rounded bg-muted" />
+        {/* Button */}
+        <div className="h-8 w-full rounded-lg bg-muted mt-1" />
+      </div>
+    </div>
+  );
+}
+
 export default function TemplatesPage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchInput, setSearchInput] = useState('');
@@ -126,12 +150,16 @@ export default function TemplatesPage() {
         </div>
       </div>
 
+      {/* Skeleton grid — shown while templates are loading */}
       {loading && (
-        <div className="text-center py-16">
-          <p className="text-muted-foreground">Loading templates...</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <TemplateCardSkeleton key={i} />
+          ))}
         </div>
       )}
 
+      {/* Real template grid */}
       {!loading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredTemplates.map((template) => (
