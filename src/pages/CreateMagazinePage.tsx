@@ -96,6 +96,76 @@ export default function CreateMagazinePage() {
 
   // Discount code state for the paywall UI
   const [discountCode, setDiscountCode] = useState('');
+  const [isApplyingCode, setIsApplyingCode] = useState(false);
+  const [appliedDiscount, setAppliedDiscount] = useState<{
+    code: string;
+    discountType: 'percent' | 'fixed';
+    discountValue: number;
+    finalAmount: number;
+  } | null>(null);
+
+  // Validate and apply discount code client-side before checkout
+  const handleApplyDiscountCode = async () => {
+    if (!discountCode.trim() || !template) return;
+
+    setIsApplyingCode(true);
+    try {
+      const { data: codeRow, error } = await supabase
+        .from('template_discount_codes')
+        .select('*')
+        .eq('code', discountCode.trim().toUpperCase())
+        .eq('template_id', template.id)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (error || !codeRow) {
+        toast.error('Invalid or expired discount code');
+        setAppliedDiscount(null);
+        return;
+      }
+
+      // Check expiry
+      if (codeRow.expires_at && new Date(codeRow.expires_at) < new Date()) {
+        toast.error('This discount code has expired');
+        setAppliedDiscount(null);
+        return;
+      }
+
+      // Check max uses
+      if (codeRow.max_uses !== null && codeRow.uses_count >= codeRow.max_uses) {
+        toast.error('This discount code has reached its usage limit');
+        setAppliedDiscount(null);
+        return;
+      }
+
+      // Calculate final amount
+      const originalPrice = Number(template.price);
+      let finalAmount: number;
+
+      if (codeRow.discount_type === 'percent') {
+        finalAmount = originalPrice * (1 - codeRow.discount_value / 100);
+      } else {
+        // fixed
+        finalAmount = Math.max(0, originalPrice - codeRow.discount_value);
+      }
+
+      finalAmount = Math.round(finalAmount * 100) / 100;
+
+      setAppliedDiscount({
+        code: codeRow.code,
+        discountType: codeRow.discount_type,
+        discountValue: codeRow.discount_value,
+        finalAmount,
+      });
+
+      toast.success('Discount code applied!');
+    } catch (err) {
+      console.error('Error validating discount code:', err);
+      toast.error('Could not validate discount code. Please try again.');
+    } finally {
+      setIsApplyingCode(false);
+    }
+  };
 
   const currentSlotTargetRef = useRef<{ pageNumber: number; slotId: string } | null>(null);
 
@@ -940,31 +1010,90 @@ export default function CreateMagazinePage() {
       {template?.price > 0 && !hasTemplateAccess && !loading && (
         <Card className="mb-6">
           <div className="p-6">
-            <div className="flex items-center justify-between gap-4 mb-4">
+
+            {/* Price row */}
+            <div className="flex items-center justify-between gap-4 mb-5">
               <div>
                 <p className="font-medium">This template is paid.</p>
-                <p className="text-sm text-muted-foreground">
-                  Cost: ₦{Number(template.price).toLocaleString()}
-                </p>
+
+                {/* Show original + discounted price if a code is applied, else just original */}
+                {appliedDiscount ? (
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <p className="text-sm text-muted-foreground line-through">
+                      ₦{Number(template.price).toLocaleString()}
+                    </p>
+                    <p className="text-sm font-semibold text-gold">
+                      ₦{appliedDiscount.finalAmount.toLocaleString()}
+                    </p>
+                    {appliedDiscount.discountType === 'percent' ? (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-gold/10 text-gold font-medium">
+                        {appliedDiscount.discountValue}% off
+                      </span>
+                    ) : (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-gold/10 text-gold font-medium">
+                        ₦{appliedDiscount.discountValue.toLocaleString()} off
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Cost: ₦{Number(template.price).toLocaleString()}
+                  </p>
+                )}
               </div>
+
               {/* ✅ Fixed: wrapped in arrow function so click event isn't passed as discountCode */}
-              <Button variant="gold" onClick={() => openPaywall(discountCode.trim() || undefined)}>
+              {/* Pass applied code to openPaywall so init-paystack can validate + apply server-side too */}
+              <Button
+                variant="gold"
+                onClick={() => openPaywall(appliedDiscount?.code || discountCode.trim() || undefined)}
+              >
                 Unlock Template
               </Button>
             </div>
 
-            {/* Minimal discount code input */}
+            {/* Discount code input row */}
             <div className="flex items-center gap-2 max-w-xs">
               <div className="relative flex-1">
                 <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   value={discountCode}
-                  onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                  onChange={(e) => {
+                    setDiscountCode(e.target.value.toUpperCase());
+                    // Clear applied discount if code is changed
+                    if (appliedDiscount) setAppliedDiscount(null);
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleApplyDiscountCode()}
                   placeholder="Discount code"
                   className="pl-8 h-8 text-sm uppercase tracking-wider placeholder:normal-case placeholder:tracking-normal"
                 />
               </div>
+
+              {/* Underline text Apply button */}
+              {discountCode.trim() && !appliedDiscount && (
+                <button
+                  onClick={handleApplyDiscountCode}
+                  disabled={isApplyingCode}
+                  className="text-sm text-gold underline underline-offset-2 hover:text-gold/80 transition-colors shrink-0 disabled:opacity-50"
+                >
+                  {isApplyingCode ? 'Applying...' : 'Apply'}
+                </button>
+              )}
+
+              {/* Show a remove link if code is already applied */}
+              {appliedDiscount && (
+                <button
+                  onClick={() => {
+                    setAppliedDiscount(null);
+                    setDiscountCode('');
+                  }}
+                  className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors shrink-0"
+                >
+                  Remove
+                </button>
+              )}
             </div>
+
           </div>
         </Card>
       )}
