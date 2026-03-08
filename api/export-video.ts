@@ -1,15 +1,37 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Transition config inlined here — Vercel serverless can't resolve src/ imports at runtime.
-// Keep this in sync with src/lib/videoTransitions.ts when you add/change transitions.
-const VIDEO_TRANSITIONS: Record<string, { shotstackIn: string; shotstackOut: string }> = {
-  fade:      { shotstackIn: 'fade',      shotstackOut: 'fade'  },
-  slideLeft: { shotstackIn: 'slideLeft', shotstackOut: 'slideLeft' },
-  zoom:      { shotstackIn: 'carouselLeft', shotstackOut: 'fade' },  // 'zoom' is not a valid Shotstack name
+// Transition config inlined — Vercel serverless can't resolve src/ imports at runtime.
+// Keep in sync with src/lib/videoTransitions.ts when you add/change transitions.
+interface TransitionPair { in: string; out: string; }
+interface TransitionStyle { cycle: TransitionPair[]; }
+
+const VIDEO_TRANSITIONS: Record<string, TransitionStyle> = {
+  simple: {
+    cycle: [
+      { in: 'fadeSlow',  out: 'fadeSlow'  },
+      { in: 'slideLeft', out: 'fadeSlow'  },
+      { in: 'fadeFast',  out: 'slideLeft' },
+    ],
+  },
+  bold: {
+    cycle: [
+      { in: 'wipeLeft',     out: 'wipeLeft'    },
+      { in: 'carouselLeft', out: 'wipeLeft'     },
+      { in: 'wipeRight',    out: 'carouselLeft' },
+    ],
+  },
+  elegant: {
+    cycle: [
+      { in: 'shuffleTopRight', out: 'shuffleTopRight' },
+      { in: 'shuffleTopLeft',  out: 'shuffleTopLeft'  },
+      { in: 'flipLeft',        out: 'fadeSlow'         },
+    ],
+  },
 };
 
-function getTransition(id: string) {
-  return VIDEO_TRANSITIONS[id] ?? VIDEO_TRANSITIONS['fade'];
+function getTransitionForClip(id: string, clipIndex: number): TransitionPair {
+  const style = VIDEO_TRANSITIONS[id] ?? VIDEO_TRANSITIONS['simple'];
+  return style.cycle[clipIndex % style.cycle.length];
 }
 
 export default async function handler(req: any, res: any) {
@@ -30,28 +52,27 @@ export default async function handler(req: any, res: any) {
     );
 
     const SHOTSTACK_API_KEY = process.env.SHOTSTACK_API_KEY!;
-    const SHOTSTACK_URL = 'https://api.shotstack.io/stage/render';
 
-    // Resolve transition — safe fallback to 'fade' if unknown id sent
-    const transition = getTransition(transitionId ?? 'fade');
+    // ✅ Production endpoint — switch SHOTSTACK_API_KEY env var on Vercel to your production key
+    const SHOTSTACK_URL = 'https://api.shotstack.io/v1/render';
 
-    // Limit to 8 pages
-    const safePages = pages.slice(0, 8);
+    // All pages — no arbitrary limit
+    const allPages = pages;
 
-    const clips = safePages.map((src: string, index: number) => ({
-      asset: {
-        type: 'image',
-        src: src.trim(),
-      },
-      start: index * 3,
-      length: 3,
-      fit: 'contain',
-      position: 'center',
-      transition: {
-        in: transition.shotstackIn,
-        out: transition.shotstackOut,
-      },
-    }));
+    const clips = allPages.map((src: string, index: number) => {
+      const transition = getTransitionForClip(transitionId ?? 'simple', index);
+      return {
+        asset: { type: 'image', src: src.trim() },
+        start: index * 3,
+        length: 3,
+        fit: 'contain',
+        position: 'center',
+        transition: {
+          in: transition.in,
+          out: transition.out,
+        },
+      };
+    });
 
     const payload = {
       timeline: {
@@ -60,9 +81,10 @@ export default async function handler(req: any, res: any) {
       },
       output: {
         format: 'mp4',
-        resolution: 'sd',
-        aspectRatio: '9:16',
-        fps: 24,
+        resolution: '1080',   // ✅ Highest — 1080px (1920×1080 landscape / 1080×1920 portrait)
+        aspectRatio: '9:16',  // Portrait magazine format
+        fps: 25,
+        quality: 'high',      // ✅ Visually lossless compression
       },
     };
 
@@ -81,7 +103,11 @@ export default async function handler(req: any, res: any) {
     }
 
     const shotstackData = await response.json();
-    const renderId = shotstackData.response.id;
+    const renderId = shotstackData.response?.id;
+
+    if (!renderId) {
+      return res.status(400).json({ error: 'Shotstack did not return a render ID', details: shotstackData });
+    }
 
     // Log (fire-and-forget)
     supabase.from('exported_videos_log').insert({
@@ -90,15 +116,14 @@ export default async function handler(req: any, res: any) {
       template_id: templateId || null,
       shotstack_render_id: renderId,
       status: 'queued',
-      page_count: safePages.length,
-      transition_id: transitionId ?? 'fade',
+      page_count: allPages.length,
+      transition_id: transitionId ?? 'simple',
     });
 
     res.status(202).json({
       success: true,
-      message: `Rendering ${safePages.length} magazine pages...`,
+      message: `Rendering ${allPages.length} magazine pages...`,
       renderId,
-      statusUrl: `https://api.shotstack.io/stage/render/${renderId}`,
     });
   } catch (error: any) {
     console.error('Video export error:', error);

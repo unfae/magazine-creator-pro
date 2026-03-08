@@ -1,4 +1,3 @@
-// /api/video-status.ts
 export default async function handler(req: any, res: any) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -10,25 +9,16 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: 'Missing renderId' });
   }
 
-  try {
-    const SHOTSTACK_API_KEY = process.env.SHOTSTACK_API_KEY!;
-    const url = `https://api.shotstack.io/stage/render/${renderId}`;
+  const SHOTSTACK_API_KEY = process.env.SHOTSTACK_API_KEY!;
 
-    const response = await fetch(url, {
-      headers: {
-        'x-api-key': SHOTSTACK_API_KEY,
-      },
-    });
+  // ✅ Production endpoint — matches export-video.ts
+  const response = await fetch(`https://api.shotstack.io/v1/render/${encodeURIComponent(renderId)}`, {
+    method: 'GET',
+    headers: {
+      'x-api-key': SHOTSTACK_API_KEY,
+    },
+  });
 
-    if (!response.ok) {
-      const text = await response.text();
-      return res.status(response.status).json({ error: text });
-    }
-
-    const data = await response.json();
-    return res.status(200).json(data);
-  } catch (err: any) {
-    console.error('Video status error:', err);
-    return res.status(500).json({ error: err.message });
-  }
+  const data = await response.json();
+  return res.status(response.ok ? 200 : 400).json(data);
 }
