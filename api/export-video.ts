@@ -1,8 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Import transition config — must be compatible with your bundler's server-side resolution.
-// If this import path causes issues, copy the VIDEO_TRANSITIONS array inline here instead.
-import { getTransition } from '../../src/lib/videoTransitions';
+// Transition config inlined here — Vercel serverless can't resolve src/ imports at runtime.
+// Keep this in sync with src/lib/videoTransitions.ts when you add/change transitions.
+const VIDEO_TRANSITIONS: Record<string, { shotstackIn: string; shotstackOut: string }> = {
+  fade:      { shotstackIn: 'fade',      shotstackOut: 'fade'  },
+  slideLeft: { shotstackIn: 'slideLeft', shotstackOut: 'slideLeft' },
+  zoom:      { shotstackIn: 'zoom',      shotstackOut: 'fade'  },
+};
+
+function getTransition(id: string) {
+  return VIDEO_TRANSITIONS[id] ?? VIDEO_TRANSITIONS['fade'];
+}
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
