@@ -35,10 +35,10 @@ export const VIDEO_TRANSITIONS: VideoTransition[] = [
   {
     id: 'zoom',
     label: 'Zoom',
-    description: 'Pages scale up from the centre',
+    description: 'Pages carousel in from the left',
     gifUrl: null,
-    shotstackIn: 'zoom',
-    shotstackOut: 'fade',      // fade out feels smoother after zoom in
+    shotstackIn: 'carouselLeft',
+    shotstackOut: 'fade',
   },
 ];
 

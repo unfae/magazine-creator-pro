@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 const VIDEO_TRANSITIONS: Record<string, { shotstackIn: string; shotstackOut: string }> = {
   fade:      { shotstackIn: 'fade',      shotstackOut: 'fade'  },
   slideLeft: { shotstackIn: 'slideLeft', shotstackOut: 'slideLeft' },
-  zoom:      { shotstackIn: 'zoom',      shotstackOut: 'fade'  },
+  zoom:      { shotstackIn: 'carouselLeft', shotstackOut: 'fade' },  // 'zoom' is not a valid Shotstack name
 };
 
 function getTransition(id: string) {

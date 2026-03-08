@@ -91,6 +91,8 @@ export function useVideoExport() {
   ) => {
     let progress = Math.max(0, Math.min(99, startProgress));
     let stopTick = false;
+    let attempts = 0;
+    const MAX_ATTEMPTS = 40; // 40 × 3s = 2 minutes max
 
     const tick = setInterval(() => {
       if (stopTick) return;
@@ -104,6 +106,14 @@ export function useVideoExport() {
     };
 
     const poll = async () => {
+      attempts++;
+
+      if (attempts > MAX_ATTEMPTS) {
+        stop();
+        setErrorToast(toastId, progress, 'Video render timed out. Please try again.');
+        return;
+      }
+
       try {
         const res = await fetch(`/api/video-status?renderId=${encodeURIComponent(renderId)}`);
         const data = await res.json();
@@ -128,9 +138,11 @@ export function useVideoExport() {
           return;
         }
 
+        // Still processing — poll again
         setTimeout(poll, 3000);
       } catch (err) {
         console.error('Status poll failed:', err);
+        // Network hiccup — retry up to the limit
         setTimeout(poll, 3000);
       }
     };
