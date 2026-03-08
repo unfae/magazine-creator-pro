@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 
-export function useTemplateAccess(templatePay: any) {
+export function useTemplateAccess(templatePay: any, refetchKey: number = 0) {
   const [hasAccess, setHasAccess] = useState(false);
   const [loading, setLoading] = useState(true);
   const [exportsUsed, setExportsUsed] = useState(0);
@@ -61,7 +61,7 @@ export function useTemplateAccess(templatePay: any) {
     };
 
     checkAccess();
-  }, [templatePay?.id, templatePay?.price]);  // re-runs when price changes (catches 100% discount override)
+  }, [templatePay?.id, templatePay?.price, refetchKey]);  // refetchKey increments after payment to force re-check
 
   // openPaywall accepts:
   //   discountCode — validated code string, passed to init-paystack for server-side re-validation

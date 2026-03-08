@@ -213,9 +213,12 @@ serve(async (req) => {
     // Use resolved slug in callback URL; fall back to templateId only if slug is truly missing
     const callbackIdentifier = resolvedSlug ?? templateId;
     // videoOnly payments return to same template page; template payments use the callback page
+    // Both payment types return directly to the template page.
+    // CreateMagazinePage detects ?verify= (template) or ?videoVerify=true (video)
+    // and calls verify-paystack inline — no separate callback page needed.
     const callbackUrl = videoOnly
       ? `https://www.magznmaker.com/create/${callbackIdentifier}?videoVerify=true`
-      : `https://www.magznmaker.com/templatepayment/callback?templateSlug=${callbackIdentifier}`;
+      : `https://www.magznmaker.com/create/${callbackIdentifier}?verify=${reference}`;
 
     const res = await fetch("https://api.paystack.co/transaction/initialize", {
       method: "POST",

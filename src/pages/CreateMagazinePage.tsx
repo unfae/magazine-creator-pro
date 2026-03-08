@@ -73,7 +73,8 @@ export default function CreateMagazinePage() {
   const { templateSlug } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [videoAccessKey, setVideoAccessKey] = useState(0); // increments to force useVideoAccess re-check
+  const [videoAccessKey, setVideoAccessKey] = useState(0);     // increments to force useVideoAccess re-check
+  const [templateAccessKey, setTemplateAccessKey] = useState(0); // increments to force useTemplateAccess re-check
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
   const perSlotFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -100,7 +101,7 @@ export default function CreateMagazinePage() {
     ? { ...template, price: 0 }
     : template;
 
-  const { hasTemplateAccess, loading, openPaywall } = useTemplateAccess(templatePay);
+  const { hasTemplateAccess, loading, openPaywall } = useTemplateAccess(templatePay, templateAccessKey);
 
   const [userImages, setUserImages] = useState<Record<number, Record<string, string>>>({});
   const [userTexts, setUserTexts] = useState<Record<number, Record<string, string>>>({});
@@ -211,14 +212,36 @@ export default function CreateMagazinePage() {
       // ─── Step 1: fetch template row ───────────────────────────────────────────
       // Set template immediately so the header, price UI, and paywall card all
       // render right away — without waiting for pages to load.
-      const { data: tmpl, error: tErr } = await supabase
+      // Try by slug first; fall back to ID so legacy links (/create/<uuid>) still work.
+      // If an ID-based URL is found, redirect to the canonical slug URL.
+      let tmpl: any = null;
+      const { data: bySlug } = await supabase
         .from('templates')
         .select('*')
         .eq('slug', templateSlug)
-        .single();
+        .maybeSingle();
 
-      if (tErr || !tmpl) {
-        console.error('Error fetching template:', tErr);
+      if (bySlug) {
+        tmpl = bySlug;
+      } else {
+        const { data: byId } = await supabase
+          .from('templates')
+          .select('*')
+          .eq('id', templateSlug)
+          .maybeSingle();
+
+        if (byId) {
+          // Redirect to canonical slug URL so the address bar is always clean
+          if (byId.slug && byId.slug !== templateSlug) {
+            navigate(`/create/${byId.slug}`, { replace: true });
+            return; // effect will re-run with the real slug
+          }
+          tmpl = byId;
+        }
+      }
+
+      if (!tmpl) {
+        console.error('Template not found for slug/id:', templateSlug);
         toast.error('Template not found');
         setLoadingTemplate(false);
         return;
@@ -314,6 +337,39 @@ export default function CreateMagazinePage() {
       mounted = false;
       data.subscription.unsubscribe();
     };
+  }, []);
+
+  // ── Handle ?verify=<reference> after Paystack template payment redirect ───────
+  // Paystack now redirects to /create/:slug?verify=<reference> instead of the
+  // separate callback page — CreateMagazinePage verifies the payment directly here.
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search);
+    const reference = raw.get('verify');
+    if (!reference) return;
+
+    // Clean URL immediately so a refresh doesn't re-trigger
+    const next = new URLSearchParams(raw);
+    next.delete('verify');
+    next.delete('trxref');
+    next.delete('reference');
+    setSearchParams(next, { replace: true });
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('verify-paystack', {
+          body: { reference },
+        });
+        if (error) throw error;
+        if (data?.ok) {
+          toast.success('Payment verified! Template unlocked.');
+          setTemplateAccessKey((k) => k + 1); // trigger useTemplateAccess re-check
+        } else {
+          toast.error(data?.error || 'Could not verify payment. Please contact support.');
+        }
+      } catch (e: any) {
+        toast.error(e?.message || 'Payment verification failed.');
+      }
+    })();
   }, []);
 
   // ── Handle ?videoVerify=true after Paystack video payment redirect ──────────
