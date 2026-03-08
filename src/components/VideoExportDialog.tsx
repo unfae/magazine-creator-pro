@@ -23,6 +23,7 @@ interface VideoExportDialogProps {
   templatePages: any[];
   renderPageToImageUrl: (pg: any) => Promise<string | null>;
   disabled?: boolean;
+  refetchKey?: number; // increment from parent to force video access re-check
 }
 
 export function VideoExportDialog({
@@ -30,13 +31,14 @@ export function VideoExportDialog({
   templatePages,
   renderPageToImageUrl,
   disabled = false,
+  refetchKey = 0,
 }: VideoExportDialogProps) {
   const [open, setOpen] = useState(false);
   const [selectedTransition, setSelectedTransition] = useState<TransitionId>('fade');
   const [isExporting, setIsExporting] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
 
-  const { hasVideoAccess, checkingVideo } = useVideoAccess(template);
+  const { hasVideoAccess, checkingVideo } = useVideoAccess(template, refetchKey);
   const { exportVideo } = useVideoExport();
 
   const isPaidTemplate = (template?.price ?? 0) > 0;

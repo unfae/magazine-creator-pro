@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -72,6 +72,8 @@ type TemplatePage = {
 export default function CreateMagazinePage() {
   const { templateSlug } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [videoAccessKey, setVideoAccessKey] = useState(0); // increments to force useVideoAccess re-check
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
   const perSlotFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -312,6 +314,41 @@ export default function CreateMagazinePage() {
       mounted = false;
       data.subscription.unsubscribe();
     };
+  }, []);
+
+  // ── Handle ?videoVerify=true after Paystack video payment redirect ──────────
+  // Calls verify-paystack to mark the payment success, then bumps videoAccessKey
+  // so useVideoAccess re-runs and the Export Video button becomes active.
+  useEffect(() => {
+    const isVideoVerify = searchParams.get('videoVerify') === 'true';
+    if (!isVideoVerify) return;
+
+    // Remove the param immediately so it doesn't re-run on refresh
+    const next = new URLSearchParams(searchParams);
+    next.delete('videoVerify');
+    next.delete('trxref');
+    next.delete('reference');
+    setSearchParams(next, { replace: true });
+
+    const reference = searchParams.get('reference');
+    if (!reference) return;
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('verify-paystack', {
+          body: { reference },
+        });
+        if (error) throw error;
+        if (data?.ok) {
+          toast.success('Video export unlocked!');
+          setVideoAccessKey((k) => k + 1); // trigger useVideoAccess re-check
+        } else {
+          toast.error(data?.error || 'Could not verify payment. Please contact support.');
+        }
+      } catch (e: any) {
+        toast.error(e?.message || 'Payment verification failed.');
+      }
+    })();
   }, []);
 
   if (loadingTemplate) {
@@ -1569,6 +1606,7 @@ export default function CreateMagazinePage() {
           templatePages={templatePages}
           renderPageToImageUrl={renderPageToImageUrl}
           disabled={isGenerating}
+          refetchKey={videoAccessKey}
         />
       </div>
     </div>

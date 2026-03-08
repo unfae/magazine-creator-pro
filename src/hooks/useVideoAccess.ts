@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 //   • Free template (price = 0) — costs ₦1,000, stored as a separate payment row
 //     with payment_purpose = 'video' and video_unlocked = true
 
-export function useVideoAccess(template: any) {
+export function useVideoAccess(template: any, refetchKey: number = 0) {
   const [hasVideoAccess, setHasVideoAccess] = useState(false);
   const [checkingVideo, setCheckingVideo] = useState(true);
 
@@ -59,7 +59,7 @@ export function useVideoAccess(template: any) {
     };
 
     check();
-  }, [template?.id, template?.price]);
+  }, [template?.id, template?.price, refetchKey]); // refetchKey increments to force re-check
 
   return { hasVideoAccess, checkingVideo };
 }
