@@ -1,99 +1,142 @@
-import { createClient } from '@supabase/supabase-js';
+import { useState } from 'react';
+import { toast } from 'sonner';
+// TransitionId is just a string — no import needed from videoTransitions
 
-// Import transition config — must be compatible with your bundler's server-side resolution.
-// If this import path causes issues, copy the VIDEO_TRANSITIONS array inline here instead.
-import { getTransition } from '../../src/lib/videoTransitions';
+const SUBTITLE = 'Kindly hold on briefly while your video is being prepared...';
 
-export default async function handler(req: any, res: any) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+function setLoadingToast(toastId: string | number, progress: number) {
+  toast.loading(`Generating Video... ${progress}%`, {
+    id: toastId,
+    position: 'top-left',
+    duration: Infinity,
+    description: SUBTITLE,
+  });
+}
 
-  try {
-    const { pages, userId, templateName, templateId, transitionId } = req.body;
+function setErrorToast(toastId: string | number, progress: number, message: string) {
+  toast.error(`Generating Video... ${progress}%`, {
+    id: toastId,
+    position: 'top-left',
+    duration: Infinity,
+    description: message,
+  });
+}
 
-    if (!pages || !Array.isArray(pages) || pages.length === 0) {
-      return res.status(400).json({ error: 'No pages provided' });
+function setSuccessToast(toastId: string | number, videoUrl: string) {
+  toast.success(`Video Generated!`, {
+    id: toastId,
+    position: 'top-left',
+    duration: Infinity,
+    description: 'Your video is ready.',
+    action: {
+      label: 'Open Video',
+      onClick: () => window.open(videoUrl, '_blank'),
+    },
+    className: 'flex-col items-start gap-3',
+    classNames: {
+      actionButton: '!h-10 w-[50%] !mr-auto !ml-0 !justify-center !text-sm !font-semibold',
+    },
+  });
+}
+
+export function useVideoExport() {
+  const [isExportingVideo, setIsExportingVideo] = useState(false);
+
+  const exportVideo = async (
+    pageUrls: string[],
+    template: any,
+    userId: string,
+    toastId: string | number,
+    startProgress: number = 50,
+    transitionId: string = 'fade'         // ← new param
+  ) => {
+    if (!pageUrls.length) {
+      setErrorToast(toastId, startProgress, 'No pages to export.');
+      return;
     }
 
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    setIsExportingVideo(true);
 
-    const SHOTSTACK_API_KEY = process.env.SHOTSTACK_API_KEY!;
-    const SHOTSTACK_URL = 'https://api.shotstack.io/stage/render';
+    try {
+      setLoadingToast(toastId, startProgress);
 
-    // Resolve transition — safe fallback to 'fade' if unknown id sent
-    const transition = getTransition(transitionId ?? 'fade');
+      const res = await fetch('/api/export-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pages: pageUrls,
+          userId,
+          templateName: template.name,
+          templateId: template.id,
+          transitionId,   // ← pass to API
+        }),
+      });
 
-    // Limit to 8 pages
-    const safePages = pages.slice(0, 8);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Export failed');
 
-    const clips = safePages.map((src: string, index: number) => ({
-      asset: {
-        type: 'image',
-        src: src.trim(),
-      },
-      start: index * 3,
-      length: 3,
-      fit: 'contain',
-      position: 'center',
-      transition: {
-        in: transition.shotstackIn,
-        out: transition.shotstackOut,
-      },
-    }));
+      await pollVideoStatus(data.renderId, toastId, startProgress);
+    } catch (err: any) {
+      console.error(err);
+      setErrorToast(toastId, startProgress, err?.message || 'Video export failed.');
+    } finally {
+      setIsExportingVideo(false);
+    }
+  };
 
-    const payload = {
-      timeline: {
-        tracks: [{ clips }],
-        background: '#000000',
-      },
-      output: {
-        format: 'mp4',
-        resolution: 'sd',
-        aspectRatio: '9:16',
-        fps: 24,
-      },
+  const pollVideoStatus = async (
+    renderId: string,
+    toastId: string | number,
+    startProgress: number
+  ) => {
+    let progress = Math.max(0, Math.min(99, startProgress));
+    let stopTick = false;
+
+    const tick = setInterval(() => {
+      if (stopTick) return;
+      progress = Math.min(progress + 1, 99);
+      setLoadingToast(toastId, progress);
+    }, 350);
+
+    const stop = () => {
+      stopTick = true;
+      clearInterval(tick);
     };
 
-    const response = await fetch(SHOTSTACK_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': SHOTSTACK_API_KEY,
-      },
-      body: JSON.stringify(payload),
-    });
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/video-status?renderId=${encodeURIComponent(renderId)}`);
+        const data = await res.json();
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      return res.status(400).json({ error: `Shotstack: ${errorText}` });
-    }
+        if (!res.ok) {
+          stop();
+          setErrorToast(toastId, progress, 'Video status check failed. Please try again.');
+          return;
+        }
 
-    const shotstackData = await response.json();
-    const renderId = shotstackData.response.id;
+        const status = data.response?.status;
 
-    // Log (fire-and-forget)
-    supabase.from('exported_videos_log').insert({
-      user_id: userId,
-      template_name: templateName,
-      template_id: templateId || null,
-      shotstack_render_id: renderId,
-      status: 'queued',
-      page_count: safePages.length,
-      transition_id: transitionId ?? 'fade',
-    });
+        if (status === 'done') {
+          stop();
+          setSuccessToast(toastId, data.response.url);
+          return;
+        }
 
-    res.status(202).json({
-      success: true,
-      message: `Rendering ${safePages.length} magazine pages...`,
-      renderId,
-      statusUrl: `https://api.shotstack.io/stage/render/${renderId}`,
-    });
-  } catch (error: any) {
-    console.error('Video export error:', error);
-    res.status(500).json({ error: error.message });
-  }
+        if (status === 'failed') {
+          stop();
+          setErrorToast(toastId, progress, data.response?.error || 'Video render failed.');
+          return;
+        }
+
+        setTimeout(poll, 3000);
+      } catch (err) {
+        console.error('Status poll failed:', err);
+        setTimeout(poll, 3000);
+      }
+    };
+
+    poll();
+  };
+
+  return { exportVideo, isExportingVideo };
 }
