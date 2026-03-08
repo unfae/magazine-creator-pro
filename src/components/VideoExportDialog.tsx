@@ -283,7 +283,7 @@ export function VideoExportDialog({
                 <div>
                   <p className="text-sm font-medium">Unlock template first</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Purchase this template to get video export included at no extra cost.
+                    Purchase this template to get video export included at no extra cost. Kindly Refresh if you paid already.
                   </p>
                 </div>
               </div>
