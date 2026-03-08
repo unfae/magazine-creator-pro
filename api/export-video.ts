@@ -3,83 +3,79 @@ import { createClient } from '@supabase/supabase-js';
 // ─── Transition config (inlined — Vercel can't resolve src/ at runtime) ───────
 // Keep in sync with src/lib/videoTransitions.ts
 
-interface TransitionPair { in: string; out: string; }
 interface LumaMatte { url: string; duration: number; }
 interface Style {
   type: 'standard' | 'luma';
   stride: number;
   clipLength: number;
-  cycle?: TransitionPair[];
+  cycle?: { in: string; out: string }[];
   lumaCycle?: LumaMatte[];
-  introFlash?: boolean;
   firstClipIn?: string;
   firstClipEffect?: string;
 }
 
 const STYLES: Record<string, Style> = {
   simple: {
-    type: 'standard', stride: 4, clipLength: 5,
+    type: 'standard', stride: 3, clipLength: 4,
     cycle: [
       { in: 'fadeFast',      out: 'none' },
       { in: 'slideLeftFast', out: 'none' },
-      { in: 'fadeFast',      out: 'none' },
+      { in: 'slideUpFast',   out: 'none' },
     ],
   },
   bold: {
-    type: 'luma', stride: 3.5, clipLength: 5.1,
+    type: 'luma', stride: 2.5, clipLength: 4,
     lumaCycle: [
-      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/paint-left.mp4',  duration: 1.4  },
-      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/blocks-in.mp4',   duration: 1.32 },
-      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/paint-right.mp4', duration: 1.4  },
+      { url: 'https://shotstack-assets.s3.ap-southeast-2.amazonaws.com/luma-mattes/single-arrow-right.mp4',     duration: 2    },
+      { url: 'https://templates.shotstack.io/basic/asset/video/luma/double-arrow/double-arrow-down.mp4',          duration: 2    },
+      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/luma-mattes/waves/double-vertical.mp4',   duration: 1.32 },
     ],
   },
   elegant: {
-    type: 'luma', stride: 4.5, clipLength: 6.5,
-    introFlash: true,
+    type: 'luma', stride: 3.5, clipLength: 5,
     firstClipIn: 'fadeSlow',
     firstClipEffect: 'zoomIn',
     lumaCycle: [
+      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/luma-mattes/circles/center-double.mp4',   duration: 1.76 },
+      { url: 'https://templates.shotstack.io/basic/asset/video/luma/double-arrow/double-arrow-up.mp4',            duration: 2    },
       { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/radial.mp4',          duration: 1.76 },
-      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/luma-mattes/circles/center-double.mp4',    duration: 1.76 },
-      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/luma-mattes/waves/double-vertical.mp4',    duration: 1.32 },
     ],
   },
   cinematic: {
-    type: 'luma', stride: 4, clipLength: 6.0,
+    type: 'luma', stride: 3, clipLength: 5,
     lumaCycle: [
       { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/paint-left.mp4',  duration: 1.4  },
-      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/radial.mp4',      duration: 1.76 },
       { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/paint-right.mp4', duration: 1.4  },
       { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/blocks-in.mp4',   duration: 1.32 },
+      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/radial.mp4',      duration: 1.76 },
     ],
   },
 };
 
 // ─── Track builder ────────────────────────────────────────────────────────────
 //
-// Z-ORDER RULE (critical):
-//   Shotstack: tracks[0] = TOPMOST layer. tracks[N] = bottom layer.
+// Z-ORDER:
+//   standard → reversed array: newest image = tracks[0] = topmost layer
+//   luma     → forward array: tracks[0] = oldest (top), luma peels it away
 //
-//   STANDARD: We want the NEW (incoming) image to be on top so its transition.in
-//             plays over the old image. So we REVERSE the tracks array — newest
-//             image ends up at index 0.
+// FLICKER FIX:
+//   Non-last image clips use `length = stride + luma.duration` EXACTLY.
+//   Previously we added +0.1s buffer — that 0.1s caused the image to snap back
+//   to full opacity after the luma ended, producing the flicker.
+//   Now: image clip ends at the same instant the luma ends. Clean handoff.
 //
-//   LUMA:     The luma matte on track[i] dissolves image[i] away, revealing
-//             image[i+1] on the track BELOW. So we keep forward order —
-//             oldest image is index 0 (top), newest is last (bottom).
-//             As each luma plays it peels the top image away, revealing the next.
-//
-// INTRO FLASH (elegant only):
-//   An extra track is prepended at index 0 (topmost) containing a single warm-
-//   white overlay clip that fades out in the first second — a light-flare entry.
-//   It sits above everything and disappears quickly, then the luma transitions
-//   take over for the rest of the video.
+// LUMA STRUCTURE (per track / same track):
+//   clips[0] = luma asset (masks the image below it in the same track)
+//   clips[1] = image asset (gets masked by the luma above it)
+//   The next image lives on a separate track below, starting at lumaStart,
+//   becoming visible as the luma makes the current image transparent.
 
 function buildTracks(pages: string[], style: Style): object[] {
   const { stride, clipLength, type } = style;
+  const isLast = (i: number) => i === pages.length - 1;
 
+  // ── Standard (simple) ──────────────────────────────────────────────────────
   if (type === 'standard') {
-    // ── Standard: one track per image, reversed so newest = topmost ──────────
     const imageTracks = pages.map((src, i) => {
       const t = style.cycle![i % style.cycle!.length];
       return {
@@ -93,41 +89,37 @@ function buildTracks(pages: string[], style: Style): object[] {
         }],
       };
     });
-
-    // Reverse: image N-1 (last/newest) becomes tracks[0] (topmost)
+    // Reverse: image[N-1] (newest) → tracks[0] (topmost), so its transition.in
+    // plays visibly on top of the previous image below.
     return imageTracks.reverse();
   }
 
-  // ── Luma: one track per image, forward order (oldest = top) ─────────────────
-  // The luma on track[i] dissolves image[i], revealing image[i+1] on track[i+1].
-  const isLast = (i: number) => i === pages.length - 1;
-
-  const imageTracks = pages.map((src, i) => {
+  // ── Luma ───────────────────────────────────────────────────────────────────
+  return pages.map((src, i) => {
     const clipStart = i * stride;
     const luma = style.lumaCycle![i % style.lumaCycle!.length];
-    const lumaStart = clipStart + stride; // luma fires right when next image begins
+    const lumaStart = clipStart + stride; // fires exactly when next image begins
 
-    // First clip: apply optional graceful entry + Ken Burns effect
     const isFirst = i === 0;
-    const transitionIn = isFirst && style.firstClipIn ? style.firstClipIn : 'none';
-    const effect = isFirst && style.firstClipEffect ? style.firstClipEffect : undefined;
+    const transIn = isFirst && style.firstClipIn ? style.firstClipIn : 'none';
+    const effect  = isFirst && style.firstClipEffect ? style.firstClipEffect : undefined;
 
     const imageClip: Record<string, any> = {
       asset: { type: 'image', src: src.trim() },
       start: clipStart,
-      // Last clip: just show for clipLength (no outgoing luma needed)
-      // Others: extend to cover the full luma transition window
-      length: isLast(i) ? clipLength : stride + luma.duration + 0.1,
+      // FLICKER FIX: end exactly when luma ends — no extra buffer.
+      // After luma finishes the image is fully transparent; the track below
+      // has already been visible since lumaStart. Clean, no snap-back.
+      length: isLast(i) ? clipLength : stride + luma.duration,
       fit: 'contain',
       position: 'center',
-      transition: { in: transitionIn, out: 'none' },
+      transition: { in: transIn, out: 'none' },
     };
     if (effect) imageClip.effect = effect;
 
     const clips: object[] = [imageClip];
 
-    // Add luma clip BEFORE image in the clips array (same track, applies to the image)
-    // The luma must be listed BEFORE the image clip in the clips array for Shotstack
+    // Luma clip listed FIRST in the array — Shotstack applies it to the image below it
     if (!isLast(i)) {
       clips.unshift({
         asset: { type: 'luma', src: luma.url },
@@ -138,28 +130,9 @@ function buildTracks(pages: string[], style: Style): object[] {
 
     return { clips };
   });
-
-  // Optionally prepend a warm light-flare overlay track (topmost, index 0)
-  if (style.introFlash) {
-    const flashTrack = {
-      clips: [{
-        asset: {
-          type: 'html',
-          html: '<p></p>',
-          width: 608,
-          height: 1080,
-          background: '#FFFBF0', // warm cream-white → simulates a golden light leak
-        },
-        start: 0,
-        length: 1.4,
-        opacity: 0.55,
-        transition: { in: 'none', out: 'fadeFast' },
-      }],
-    };
-    return [flashTrack, ...imageTracks];
-  }
-
-  return imageTracks;
+  // Note: luma tracks stay in FORWARD order (not reversed).
+  // tracks[0] = image[0] (oldest, top layer), luma peels it away to reveal
+  // tracks[1] = image[1] below, and so on down the stack.
 }
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
@@ -224,15 +197,18 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'Video render failed. Please try again.' });
     }
 
-    supabase.from('exported_videos_log').insert({
-      user_id: userId,
-      template_name: templateName,
-      template_id: templateId || null,
+    // ── Log to video_exports table (fire-and-forget) ──────────────────────────
+    const { error: logError } = await supabase.from('video_exports').insert({
+      user_id: userId ?? null,
+      template_id: templateId ?? null,
+      template_name: templateName ?? null,
+      transition_id: transitionId ?? 'simple',
+      page_count: pages.length,
       shotstack_render_id: renderId,
       status: 'queued',
-      page_count: pages.length,
-      transition_id: transitionId ?? 'simple',
+      created_at: new Date().toISOString(),
     });
+    if (logError) console.error('video_exports log failed:', logError.message);
 
     res.status(202).json({
       success: true,

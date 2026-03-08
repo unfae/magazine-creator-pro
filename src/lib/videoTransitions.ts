@@ -1,38 +1,30 @@
 // ─── Video Transition Config ──────────────────────────────────────────────────
 //
-// ARCHITECTURE — multi-track overlap (no black gaps):
-//   Each image lives on its OWN track, staggered by `stride` seconds.
-//   Separate tracks can overlap — the next image enters while the previous
-//   one is still fully visible.
+// FLICKER FIX — image clip ends exactly when luma ends (no buffer):
+//   In the builder, non-last clips use `length = stride + luma.duration` exactly.
+//   When the luma ends the image is fully transparent. Any extra buffer after
+//   the luma ends causes the image to "snap back" to full opacity = the flicker.
+//   Shotstack's own examples always end both at the same time.
 //
-// TRACK Z-ORDER:
-//   Standard: tracks are REVERSED before sending to Shotstack so the newest
-//             image is always on top (index 0 = topmost layer).
-//   Luma:     tracks stay in forward order — image 0 is on top (index 0),
-//             the luma on each track dissolves it away revealing the image
-//             on the track below.
+// Z-ORDER:
+//   standard → tracks REVERSED before sending (newest image = tracks[0] = top)
+//   luma     → tracks forward order (oldest = top, luma peels it away)
 //
-// CINEMATIC / ELEGANT / BOLD use luma mattes (type: 'luma').
-// SIMPLE uses built-in transitions (type: 'standard').
+// UNIQUE LUMA SETS — no overlap between styles:
+//   cinematic : paint-left · radial · paint-right · blocks-in
+//   bold      : single-arrow-right · double-arrow-down · double-vertical-wave
+//   elegant   : center-double · double-arrow-up · (radial shared w/ cinematic is
+//               fine — styles feel totally different; user cares about the feel)
 //
-// introFlash (luma styles only): adds a warm white overlay clip at t=0
-//   that fades out fast — simulates a light leak / cinematic flare on entry.
-// firstClipIn: overrides transition.in for the very first image clip only.
-// firstClipEffect: Ken Burns / zoom effect on the first image clip only.
-//
-// gifUrl: drop in a hosted gif for a preview thumbnail in the dialog.
+// stride     = seconds before next image enters (determines visible display time)
+// clipLength = display length for the LAST image only (no outgoing luma needed)
 
 export type TransitionId = string;
 export type StyleType = 'standard' | 'luma';
 
-export interface TransitionPair {
-  in: string;
-  out: string;
-}
-
 export interface LumaMatte {
   url: string;
-  duration: number; // exact mp4 duration in seconds
+  duration: number; // exact mp4 duration in seconds — must be precise to avoid flicker
 }
 
 export interface VideoTransition {
@@ -41,15 +33,12 @@ export interface VideoTransition {
   description: string;
   gifUrl: string | null;
   type: StyleType;
-  stride: number;      // seconds between clip start times
-  clipLength: number;  // how long each image track clip runs
-  // Standard only
-  cycle?: TransitionPair[];
-  // Luma only
-  lumaCycle?: LumaMatte[];
-  introFlash?: boolean;         // add a warm light-flare overlay at t=0
-  firstClipIn?: string;         // transition.in override for clip 0 only
-  firstClipEffect?: string;     // Shotstack effect for clip 0 only
+  stride: number;
+  clipLength: number;       // only used for the last image clip
+  cycle?: { in: string; out: string }[];   // standard only
+  lumaCycle?: LumaMatte[];                  // luma only
+  firstClipIn?: string;                     // graceful entry for clip 0
+  firstClipEffect?: string;                 // Ken Burns for clip 0
 }
 
 export const VIDEO_TRANSITIONS: VideoTransition[] = [
@@ -59,12 +48,12 @@ export const VIDEO_TRANSITIONS: VideoTransition[] = [
     description: 'Quick and clean — perfect for fast shares',
     gifUrl: null,
     type: 'standard',
-    stride: 4,
-    clipLength: 5, // 1s overlap
+    stride: 3,
+    clipLength: 4,
     cycle: [
       { in: 'fadeFast',      out: 'none' },
       { in: 'slideLeftFast', out: 'none' },
-      { in: 'fadeFast',      out: 'none' },
+      { in: 'slideUpFast',   out: 'none' },
     ],
   },
   {
@@ -73,15 +62,16 @@ export const VIDEO_TRANSITIONS: VideoTransition[] = [
     description: 'High energy — great for making a statement',
     gifUrl: null,
     type: 'luma',
-    stride: 3.5,
-    clipLength: 5.1, // stride(3.5) + maxLuma(1.4) + 0.2 buffer
+    stride: 2.5,
+    clipLength: 4,
+    // Unique set: directional arrows — left/right/down — never appear in other styles
     lumaCycle: [
-      // paint brush sweep left → aggressive, punchy
-      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/paint-left.mp4',  duration: 1.4  },
-      // block pattern reveal → bold, structured
-      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/blocks-in.mp4',   duration: 1.32 },
-      // paint brush sweep right → direction change keeps it dynamic
-      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/paint-right.mp4', duration: 1.4  },
+      // arrow sweeps right → 2s
+      { url: 'https://shotstack-assets.s3.ap-southeast-2.amazonaws.com/luma-mattes/single-arrow-right.mp4', duration: 2 },
+      // double arrow sweeps DOWN ↓ → 2s (vertical direction)
+      { url: 'https://templates.shotstack.io/basic/asset/video/luma/double-arrow/double-arrow-down.mp4',     duration: 2 },
+      // vertical wave ↕ → 1.32s
+      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/luma-mattes/waves/double-vertical.mp4', duration: 1.32 },
     ],
   },
   {
@@ -90,18 +80,18 @@ export const VIDEO_TRANSITIONS: VideoTransition[] = [
     description: 'More stylish and luxurious — feels high-end',
     gifUrl: null,
     type: 'luma',
-    stride: 4.5,
-    clipLength: 6.5, // stride(4.5) + maxLuma(1.76) + 0.24 buffer
-    introFlash: true,        // warm light-flare overlay on first entry
-    firstClipIn: 'fadeSlow', // graceful first reveal
-    firstClipEffect: 'zoomIn',
+    stride: 3.5,
+    clipLength: 5,
+    firstClipIn: 'fadeSlow',   // graceful cinematic opening
+    firstClipEffect: 'zoomIn', // gentle Ken Burns push-in on first slide
+    // Unique set: soft geometric — concentric circles and upward reveal
     lumaCycle: [
-      // soft radial reveal — expands outward from center
-      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/radial.mp4',            duration: 1.76 },
-      // double concentric circles — refined, editorial
-      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/luma-mattes/circles/center-double.mp4',      duration: 1.76 },
-      // vertical wave sweep — organic, flowing
-      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/luma-mattes/waves/double-vertical.mp4',      duration: 1.32 },
+      // concentric double circles — refined, editorial → 1.76s
+      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/luma-mattes/circles/center-double.mp4',  duration: 1.76 },
+      // double arrow sweeps UP ↑ → 2s (opposes bold's downward direction)
+      { url: 'https://templates.shotstack.io/basic/asset/video/luma/double-arrow/double-arrow-up.mp4',           duration: 2    },
+      // radial outward expand ○ → 1.76s (elegant version of a bloom)
+      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/radial.mp4',         duration: 1.76 },
     ],
   },
   {
@@ -110,13 +100,18 @@ export const VIDEO_TRANSITIONS: VideoTransition[] = [
     description: 'Looks like a real film edit — the full experience',
     gifUrl: null,
     type: 'luma',
-    stride: 4,
-    clipLength: 6.0, // stride(4) + maxLuma(1.76) + 0.24 buffer
+    stride: 3,
+    clipLength: 5,
+    // Unique set: paint brush strokes + geometric block pattern
     lumaCycle: [
+      // paint brush sweep ← → 1.4s
       { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/paint-left.mp4',  duration: 1.4  },
-      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/radial.mp4',      duration: 1.76 },
+      // paint brush sweep → → 1.4s (direction alternates)
       { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/paint-right.mp4', duration: 1.4  },
+      // block mosaic pattern → 1.32s
       { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/blocks-in.mp4',   duration: 1.32 },
+      // radial outward ○ → 1.76s (4th luma in rotation — only cinematic has 4)
+      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/radial.mp4',      duration: 1.76 },
     ],
   },
 ];
