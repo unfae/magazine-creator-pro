@@ -53,12 +53,12 @@ export const VIDEO_TRANSITIONS: VideoTransition[] = [
   {
     id: 'elegant',
     label: 'Elegant',
-    description: 'Sophisticated shuffles and flips',
+    description: 'Cinematic reveals and refined sweeps',
     gifUrl: null,
     cycle: [
-      { in: 'shuffleTopRight', out: 'shuffleTopRight' },
-      { in: 'shuffleTopLeft',  out: 'shuffleTopLeft'  },
-      { in: 'flipLeft',        out: 'fadeSlow'         },
+      { in: 'revealSlow',      out: 'fadeSlow'         },  // slow cinematic uncover
+      { in: 'shuffleTopRight', out: 'shuffleTopLeft'   },  // refined card sweep
+      { in: 'carouselRightSlow', out: 'fadeSlow'       },  // smooth panoramic push
     ],
   },
 ];

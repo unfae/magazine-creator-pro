@@ -155,11 +155,15 @@ export function VideoExportDialog({
     } catch (err: any) {
       stopTick = true;
       clearInterval(tick);
-      toast.error(`Video export failed. Please try again.`, {
+      toast.error(`Video export failed`, {
         id: toastId,
         position: 'top-left',
         duration: Infinity,
-        description: err?.message,
+        description: 'Something went wrong. Please try again or contact us.',
+        action: {
+          label: 'Contact Us',
+          onClick: () => window.open('/contact', '_blank'),
+        },
       });
     } finally {
       stopTick = true;

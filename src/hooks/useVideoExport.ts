@@ -13,12 +13,20 @@ function setLoadingToast(toastId: string | number, progress: number) {
   });
 }
 
-function setErrorToast(toastId: string | number, progress: number, message: string) {
-  toast.error(`Generating Video... ${progress}%`, {
+function setErrorToast(toastId: string | number, progress: number, _rawMessage: string) {
+  // Never show raw API errors to users — always a clean message with a contact link
+  toast.error(`Video export failed`, {
     id: toastId,
     position: 'top-left',
     duration: Infinity,
-    description: message,
+    description: 'Something went wrong. Please try again or contact us.',
+    action: {
+      label: 'Contact Us',
+      onClick: () => window.open('/contact', '_blank'),
+    },
+    classNames: {
+      actionButton: '!h-8 !text-xs !font-medium',
+    },
   });
 }
 

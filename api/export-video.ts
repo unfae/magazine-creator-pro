@@ -22,9 +22,9 @@ const VIDEO_TRANSITIONS: Record<string, TransitionStyle> = {
   },
   elegant: {
     cycle: [
-      { in: 'shuffleTopRight', out: 'shuffleTopRight' },
-      { in: 'shuffleTopLeft',  out: 'shuffleTopLeft'  },
-      { in: 'flipLeft',        out: 'fadeSlow'         },
+      { in: 'revealSlow',        out: 'fadeSlow'       },
+      { in: 'shuffleTopRight',   out: 'shuffleTopLeft' },
+      { in: 'carouselRightSlow', out: 'fadeSlow'       },
     ],
   },
 };
