@@ -2,36 +2,41 @@ import { createClient } from '@supabase/supabase-js';
 
 // Transition config inlined — Vercel serverless can't resolve src/ imports at runtime.
 // Keep in sync with src/lib/videoTransitions.ts when you add/change transitions.
+//
+// Timing model: out:'none' on all styles eliminates the "dip to black" gap.
+// The exiting clip stays at full brightness; the next clip enters on top of it.
 interface TransitionPair { in: string; out: string; }
-interface TransitionStyle { cycle: TransitionPair[]; }
+interface TransitionStyle { clipLength: number; cycle: TransitionPair[]; }
 
 const VIDEO_TRANSITIONS: Record<string, TransitionStyle> = {
   simple: {
+    clipLength: 4,
     cycle: [
-      { in: 'fadeSlow',  out: 'fadeSlow'  },
-      { in: 'slideLeft', out: 'fadeSlow'  },
-      { in: 'fadeFast',  out: 'slideLeft' },
+      { in: 'fadeFast',      out: 'none' },
+      { in: 'slideLeftFast', out: 'none' },
+      { in: 'fadeFast',      out: 'none' },
     ],
   },
   bold: {
+    clipLength: 4,
     cycle: [
-      { in: 'wipeLeft',     out: 'wipeLeft'    },
-      { in: 'carouselLeft', out: 'wipeLeft'     },
-      { in: 'wipeRight',    out: 'carouselLeft' },
+      { in: 'wipeLeftFast',     out: 'none' },
+      { in: 'carouselLeftFast', out: 'none' },
+      { in: 'wipeRightFast',    out: 'none' },
     ],
   },
   elegant: {
+    clipLength: 5,
     cycle: [
-      { in: 'revealSlow',        out: 'fadeSlow'       },
-      { in: 'shuffleTopRight',   out: 'shuffleTopLeft' },
-      { in: 'carouselRightSlow', out: 'fadeSlow'       },
+      { in: 'revealSlow',        out: 'none' },
+      { in: 'shuffleTopRight',   out: 'none' },
+      { in: 'carouselRightSlow', out: 'none' },
     ],
   },
 };
 
-function getTransitionForClip(id: string, clipIndex: number): TransitionPair {
-  const style = VIDEO_TRANSITIONS[id] ?? VIDEO_TRANSITIONS['simple'];
-  return style.cycle[clipIndex % style.cycle.length];
+function getStyle(id: string): TransitionStyle {
+  return VIDEO_TRANSITIONS[id] ?? VIDEO_TRANSITIONS['simple'];
 }
 
 export default async function handler(req: any, res: any) {
@@ -52,25 +57,20 @@ export default async function handler(req: any, res: any) {
     );
 
     const SHOTSTACK_API_KEY = process.env.SHOTSTACK_API_KEY!;
-
-    // ✅ Production endpoint — switch SHOTSTACK_API_KEY env var on Vercel to your production key
     const SHOTSTACK_URL = 'https://api.shotstack.io/v1/render';
 
-    // All pages — no arbitrary limit
-    const allPages = pages;
+    const style = getStyle(transitionId ?? 'simple');
+    const { clipLength, cycle } = style;
 
-    const clips = allPages.map((src: string, index: number) => {
-      const transition = getTransitionForClip(transitionId ?? 'simple', index);
+    const clips = pages.map((src: string, index: number) => {
+      const t = cycle[index % cycle.length];
       return {
         asset: { type: 'image', src: src.trim() },
-        start: index * 3,
-        length: 3,
+        start: index * clipLength,
+        length: clipLength,
         fit: 'contain',
         position: 'center',
-        transition: {
-          in: transition.in,
-          out: transition.out,
-        },
+        transition: { in: t.in, out: t.out },
       };
     });
 
@@ -81,10 +81,10 @@ export default async function handler(req: any, res: any) {
       },
       output: {
         format: 'mp4',
-        resolution: '1080',   // ✅ Highest — 1080px (1920×1080 landscape / 1080×1920 portrait)
-        aspectRatio: '9:16',  // Portrait magazine format
+        resolution: '1080',
+        aspectRatio: '9:16',
         fps: 25,
-        quality: 'high',      // ✅ Visually lossless compression
+        quality: 'high',
       },
     };
 
@@ -99,34 +99,36 @@ export default async function handler(req: any, res: any) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      return res.status(400).json({ error: `Shotstack: ${errorText}` });
+      console.error('Shotstack error:', errorText);   // log full error server-side only
+      return res.status(400).json({ error: 'Video render failed. Please try again.' });
     }
 
     const shotstackData = await response.json();
     const renderId = shotstackData.response?.id;
 
     if (!renderId) {
-      return res.status(400).json({ error: 'Shotstack did not return a render ID', details: shotstackData });
+      console.error('Shotstack missing renderId:', shotstackData);
+      return res.status(400).json({ error: 'Video render failed. Please try again.' });
     }
 
-    // Log (fire-and-forget)
+    // Log fire-and-forget
     supabase.from('exported_videos_log').insert({
       user_id: userId,
       template_name: templateName,
       template_id: templateId || null,
       shotstack_render_id: renderId,
       status: 'queued',
-      page_count: allPages.length,
+      page_count: pages.length,
       transition_id: transitionId ?? 'simple',
     });
 
     res.status(202).json({
       success: true,
-      message: `Rendering ${allPages.length} magazine pages...`,
+      message: `Rendering ${pages.length} magazine pages...`,
       renderId,
     });
   } catch (error: any) {
     console.error('Video export error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Video export failed. Please try again.' });
   }
 }
