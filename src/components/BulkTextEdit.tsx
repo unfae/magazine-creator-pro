@@ -56,8 +56,8 @@ export function BulkTextEdit({ textIds, textBlocks, onBulkEdit }: BulkTextEditPr
           {safeTextBlocks.map((tb, i) => {
             const hasDefaultText = tb.defaultText && tb.defaultText !== tb.id;
             const placeholder = hasDefaultText
-              ? `Enter your ${tb.id} (e.g., ${tb.defaultText})`
-              : `Enter your ${tb.id}`;
+              ? `Type ${tb.id} (e.g., ${tb.defaultText})`
+              : `Type ${tb.id}`;
 
             return (
               <div key={tb.id} className="flex items-center gap-2">
