@@ -26,6 +26,11 @@ import ContactPage from "@/pages/ContactPage";
 import TemplateRequestPage from "@/pages/TemplateRequestPage";
 import PartnerPage from "@/pages/PartnerPage";
 
+
+
+
+
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -57,16 +62,14 @@ const App = () => (
               <Route path="/magazines" element={<MagazinesPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/settings" element={<SettingsPage />} />
-            </Route>
+              <Route path="/templatepayment/callback" element={<TemplatePaymentCallbackPage />} />
 
-            {/* ✅ Outside AppLayout — must render immediately without waiting for auth
-                to initialize. AppLayout returns null while loading, which prevented
-                this page from ever mounting after the Paystack redirect. */}
-            <Route path="/templatepayment/callback" element={<TemplatePaymentCallbackPage />} />
+            </Route>
 
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
+
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

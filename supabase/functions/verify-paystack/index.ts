@@ -127,19 +127,37 @@ serve(async (req) => {
       }
     }
 
-    // 4) Resolve template slug from template_id so the callback page can redirect reliably
-    //    without depending on URL params or localStorage surviving the Paystack redirect.
-    let templateSlug: string | null = null;
+    // 4) For paid template purchases: auto-grant video_unlocked since video is included.
+    //    For video-only payments: video_unlocked is already true from init-paystack insert.
     if (payment?.template_id) {
       const { data: tmpl } = await supabaseAdmin
+        .from("templates")
+        .select("price, slug")
+        .eq("id", payment.template_id)
+        .maybeSingle();
+
+      const isPaidTemplate = tmpl?.price != null && Number(tmpl.price) > 0;
+
+      // If this is a paid template purchase, unlock video access too
+      if (isPaidTemplate && payment?.id) {
+        await supabaseAdmin
+          .from("template_payments")
+          .update({ video_unlocked: true })
+          .eq("id", payment.id);
+      }
+    }
+
+    // 5) Resolve template slug for the callback redirect
+    let templateSlug: string | null = null;
+    if (payment?.template_id) {
+      const { data: tmplSlug } = await supabaseAdmin
         .from("templates")
         .select("slug")
         .eq("id", payment.template_id)
         .maybeSingle();
-      templateSlug = tmpl?.slug ?? null;
+      templateSlug = tmplSlug?.slug ?? null;
     }
 
-    // Return templateSlug in the response — callback page uses this to navigate directly
     return new Response(JSON.stringify({ ok: true, templateSlug, payment: payment ?? null }), {
       status: 200,
       headers: { ...headers, "Content-Type": "application/json" },

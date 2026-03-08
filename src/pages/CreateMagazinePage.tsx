@@ -14,6 +14,7 @@ import { getAllowedFontsCached, ensureGoogleFontsLoaded } from '@/lib/fontLoader
 import { BulkTextEdit } from '@/components/BulkTextEdit';
 import { scheduleExportAssetsForDeletion } from '@/lib/scheduleExportAssetsForDeletion';
 import { useVideoExport } from '@/hooks/useVideoExport';  // ✅ Add this
+import { VideoExportDialog } from '@/components/VideoExportDialog';
 import html2canvas from 'html2canvas';
 
 
@@ -1563,27 +1564,13 @@ export default function CreateMagazinePage() {
           Export PDF
         </Button>
 
-         {/* ✅ NEW Video button */}
-
-    
-         
-        
+        <VideoExportDialog
+          template={template}
+          templatePages={templatePages}
+          renderPageToImageUrl={renderPageToImageUrl}
+          disabled={isGenerating}
+        />
       </div>
     </div>
   );
 }
-
-
-/*
-
-<Button 
-          variant="gold" 
-          size="sm" 
-          onClick={handleExportVideo} 
-          disabled={isGenerating || isExportingVideo || templatePages.length === 0}
-        >
-          <Sparkles className="h-4 w-4 mr-2" />
-          Export Video
-        </Button> 
-
-*/

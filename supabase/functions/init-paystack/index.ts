@@ -42,7 +42,7 @@ serve(async (req) => {
   }
 
   try {
-    const { templateId, templateSlug, amount, discountCode } = await req.json();
+    const { templateId, templateSlug, amount, discountCode, videoOnly } = await req.json();
 
     if (!templateId || amount == null) {
       return new Response(JSON.stringify({ error: "Missing templateId or amount" }), {
@@ -178,6 +178,8 @@ serve(async (req) => {
         original_amount: originalAmount,
         discount_code_id: discountCodeId,
         status: "pending",
+        payment_purpose: videoOnly ? "video" : "template",
+        video_unlocked: videoOnly ? true : false,  // video payments are pre-approved; template payments get set by verify-paystack
       });
 
     if (insertErr) {
@@ -210,7 +212,10 @@ serve(async (req) => {
 
     // Use resolved slug in callback URL; fall back to templateId only if slug is truly missing
     const callbackIdentifier = resolvedSlug ?? templateId;
-    const callbackUrl = `https://www.magznmaker.com/templatepayment/callback?templateSlug=${callbackIdentifier}`;
+    // videoOnly payments return to same template page; template payments use the callback page
+    const callbackUrl = videoOnly
+      ? `https://www.magznmaker.com/create/${callbackIdentifier}?videoVerify=true`
+      : `https://www.magznmaker.com/templatepayment/callback?templateSlug=${callbackIdentifier}`;
 
     const res = await fetch("https://api.paystack.co/transaction/initialize", {
       method: "POST",
