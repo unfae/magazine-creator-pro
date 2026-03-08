@@ -1,16 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Transition config inlined — Vercel serverless can't resolve src/ imports at runtime.
-// Keep in sync with src/lib/videoTransitions.ts when you add/change transitions.
-//
-// Timing model: out:'none' on all styles eliminates the "dip to black" gap.
-// The exiting clip stays at full brightness; the next clip enters on top of it.
+// ─── Transition config (inlined — Vercel can't resolve src/ at runtime) ───────
+// Keep in sync with src/lib/videoTransitions.ts
 interface TransitionPair { in: string; out: string; }
-interface TransitionStyle { clipLength: number; cycle: TransitionPair[]; }
+interface LumaMatte { url: string; duration: number; }
+interface Style {
+  type: 'standard' | 'luma';
+  stride: number;
+  clipLength: number;
+  cycle?: TransitionPair[];
+  lumaCycle?: LumaMatte[];
+}
 
-const VIDEO_TRANSITIONS: Record<string, TransitionStyle> = {
+const STYLES: Record<string, Style> = {
   simple: {
-    clipLength: 4,
+    type: 'standard', stride: 4, clipLength: 5,
     cycle: [
       { in: 'fadeFast',      out: 'none' },
       { in: 'slideLeftFast', out: 'none' },
@@ -18,7 +22,7 @@ const VIDEO_TRANSITIONS: Record<string, TransitionStyle> = {
     ],
   },
   bold: {
-    clipLength: 4,
+    type: 'standard', stride: 4, clipLength: 5,
     cycle: [
       { in: 'wipeLeftFast',     out: 'none' },
       { in: 'carouselLeftFast', out: 'none' },
@@ -26,18 +30,88 @@ const VIDEO_TRANSITIONS: Record<string, TransitionStyle> = {
     ],
   },
   elegant: {
-    clipLength: 5,
+    type: 'standard', stride: 4.5, clipLength: 6,
     cycle: [
       { in: 'revealSlow',        out: 'none' },
       { in: 'shuffleTopRight',   out: 'none' },
       { in: 'carouselRightSlow', out: 'none' },
     ],
   },
+  cinematic: {
+    type: 'luma', stride: 4, clipLength: 5.4,
+    lumaCycle: [
+      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/paint-left.mp4',  duration: 1.4  },
+      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/radial.mp4',      duration: 1.76 },
+      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/paint-right.mp4', duration: 1.4  },
+      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/blocks-in.mp4',   duration: 1.32 },
+    ],
+  },
 };
 
-function getStyle(id: string): TransitionStyle {
-  return VIDEO_TRANSITIONS[id] ?? VIDEO_TRANSITIONS['simple'];
+// ─── Track builder ────────────────────────────────────────────────────────────
+//
+// Each image gets its OWN track, staggered by `stride` seconds.
+// Since they're separate tracks, they can overlap — the next image enters
+// while the previous one is still fully visible. No black gaps.
+//
+// Standard: track i = [image clip with transition.in]
+// Luma:     track i = [image clip (no built-in transition) + luma clip timed at the boundary]
+//           The luma makes image i transparent, revealing image i+1 on the track below.
+
+function buildTracks(pages: string[], style: Style): object[] {
+  const { stride, clipLength, type } = style;
+  const isLast = (i: number) => i === pages.length - 1;
+
+  return pages.map((src, i) => {
+    const clipStart = i * stride;
+
+    if (type === 'luma') {
+      const luma = style.lumaCycle![i % style.lumaCycle!.length];
+      const lumaStart = clipStart + stride; // luma plays right when next image starts
+
+      const clips: object[] = [
+        {
+          asset: { type: 'image', src: src.trim() },
+          start: clipStart,
+          // Last image: just show for clipLength, no luma needed
+          // Other images: extend to cover the luma transition period
+          length: isLast(i) ? clipLength : stride + luma.duration,
+          fit: 'contain',
+          position: 'center',
+          transition: { in: 'none', out: 'none' },
+        },
+      ];
+
+      // Add luma clip on the same track (makes this image transparent at the boundary)
+      if (!isLast(i)) {
+        clips.unshift({
+          asset: { type: 'luma', src: luma.url },
+          start: lumaStart,
+          length: luma.duration,
+        });
+      }
+
+      return { clips };
+    } else {
+      // Standard transition — just the image clip with a built-in transition.in
+      const t = style.cycle![i % style.cycle!.length];
+      return {
+        clips: [
+          {
+            asset: { type: 'image', src: src.trim() },
+            start: clipStart,
+            length: clipLength,
+            fit: 'contain',
+            position: 'center',
+            transition: { in: t.in, out: t.out },
+          },
+        ],
+      };
+    }
+  });
 }
+
+// ─── Handler ──────────────────────────────────────────────────────────────────
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -59,24 +133,12 @@ export default async function handler(req: any, res: any) {
     const SHOTSTACK_API_KEY = process.env.SHOTSTACK_API_KEY!;
     const SHOTSTACK_URL = 'https://api.shotstack.io/v1/render';
 
-    const style = getStyle(transitionId ?? 'simple');
-    const { clipLength, cycle } = style;
-
-    const clips = pages.map((src: string, index: number) => {
-      const t = cycle[index % cycle.length];
-      return {
-        asset: { type: 'image', src: src.trim() },
-        start: index * clipLength,
-        length: clipLength,
-        fit: 'contain',
-        position: 'center',
-        transition: { in: t.in, out: t.out },
-      };
-    });
+    const style = STYLES[transitionId ?? 'simple'] ?? STYLES['simple'];
+    const tracks = buildTracks(pages, style);
 
     const payload = {
       timeline: {
-        tracks: [{ clips }],
+        tracks,
         background: '#000000',
       },
       output: {
@@ -99,7 +161,7 @@ export default async function handler(req: any, res: any) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Shotstack error:', errorText);   // log full error server-side only
+      console.error('Shotstack error:', errorText);
       return res.status(400).json({ error: 'Video render failed. Please try again.' });
     }
 
@@ -111,7 +173,6 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'Video render failed. Please try again.' });
     }
 
-    // Log fire-and-forget
     supabase.from('exported_videos_log').insert({
       user_id: userId,
       template_name: templateName,

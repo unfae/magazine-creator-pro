@@ -198,22 +198,24 @@ export function VideoExportDialog({
           {/* ── Transition picker ───────────────────────────────────────────── */}
           <div>
             <p className="text-sm font-medium mb-3">Choose a transition</p>
-            <div className="grid grid-cols-3 gap-2">
+  <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory scrollbar-none">
               {VIDEO_TRANSITIONS.map((t) => {
                 const isSelected = selectedTransition === t.id;
+                const isCinematic = t.id === 'cinematic';
                 return (
                   <button
                     key={t.id}
                     onClick={() => setSelectedTransition(t.id)}
                     className={cn(
                       'flex flex-col items-center gap-2 rounded-lg border p-2.5 text-center transition-all',
+                      'flex-shrink-0 w-[30%] min-w-[90px] snap-start',
                       isSelected
                         ? 'border-gold bg-gold/5 ring-1 ring-gold'
                         : 'border-border hover:border-gold/40 hover:bg-muted/50'
                     )}
                   >
                     {/* GIF preview or placeholder */}
-                    <div className="w-full aspect-[9/12] rounded-md bg-muted overflow-hidden flex items-center justify-center">
+                    <div className="w-full aspect-[9/12] rounded-md bg-muted overflow-hidden flex items-center justify-center relative">
                       {t.gifUrl ? (
                         <img
                           src={t.gifUrl}
@@ -227,6 +229,11 @@ export function VideoExportDialog({
                             isSelected ? 'text-gold' : 'text-muted-foreground'
                           )}
                         />
+                      )}
+                      {isCinematic && (
+                        <span className="absolute top-1 right-1 bg-gold text-black text-[9px] font-bold px-1 py-0.5 rounded leading-none">
+                          PRO
+                        </span>
                       )}
                     </div>
 
