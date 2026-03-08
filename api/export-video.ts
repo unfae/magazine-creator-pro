@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 
 // ─── Transition config (inlined — Vercel can't resolve src/ at runtime) ───────
 // Keep in sync with src/lib/videoTransitions.ts
+
 interface TransitionPair { in: string; out: string; }
 interface LumaMatte { url: string; duration: number; }
 interface Style {
@@ -10,6 +11,9 @@ interface Style {
   clipLength: number;
   cycle?: TransitionPair[];
   lumaCycle?: LumaMatte[];
+  introFlash?: boolean;
+  firstClipIn?: string;
+  firstClipEffect?: string;
 }
 
 const STYLES: Record<string, Style> = {
@@ -22,23 +26,26 @@ const STYLES: Record<string, Style> = {
     ],
   },
   bold: {
-    type: 'standard', stride: 4, clipLength: 5,
-    cycle: [
-      { in: 'wipeLeftFast',     out: 'none' },
-      { in: 'carouselLeftFast', out: 'none' },
-      { in: 'wipeRightFast',    out: 'none' },
+    type: 'luma', stride: 3.5, clipLength: 5.1,
+    lumaCycle: [
+      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/paint-left.mp4',  duration: 1.4  },
+      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/blocks-in.mp4',   duration: 1.32 },
+      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/paint-right.mp4', duration: 1.4  },
     ],
   },
   elegant: {
-    type: 'standard', stride: 4.5, clipLength: 6,
-    cycle: [
-      { in: 'revealSlow',        out: 'none' },
-      { in: 'shuffleTopRight',   out: 'none' },
-      { in: 'carouselRightSlow', out: 'none' },
+    type: 'luma', stride: 4.5, clipLength: 6.5,
+    introFlash: true,
+    firstClipIn: 'fadeSlow',
+    firstClipEffect: 'zoomIn',
+    lumaCycle: [
+      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/radial.mp4',          duration: 1.76 },
+      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/luma-mattes/circles/center-double.mp4',    duration: 1.76 },
+      { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/luma-mattes/waves/double-vertical.mp4',    duration: 1.32 },
     ],
   },
   cinematic: {
-    type: 'luma', stride: 4, clipLength: 5.4,
+    type: 'luma', stride: 4, clipLength: 6.0,
     lumaCycle: [
       { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/paint-left.mp4',  duration: 1.4  },
       { url: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/examples/luma-mattes/radial.mp4',      duration: 1.76 },
@@ -50,65 +57,109 @@ const STYLES: Record<string, Style> = {
 
 // ─── Track builder ────────────────────────────────────────────────────────────
 //
-// Each image gets its OWN track, staggered by `stride` seconds.
-// Since they're separate tracks, they can overlap — the next image enters
-// while the previous one is still fully visible. No black gaps.
+// Z-ORDER RULE (critical):
+//   Shotstack: tracks[0] = TOPMOST layer. tracks[N] = bottom layer.
 //
-// Standard: track i = [image clip with transition.in]
-// Luma:     track i = [image clip (no built-in transition) + luma clip timed at the boundary]
-//           The luma makes image i transparent, revealing image i+1 on the track below.
+//   STANDARD: We want the NEW (incoming) image to be on top so its transition.in
+//             plays over the old image. So we REVERSE the tracks array — newest
+//             image ends up at index 0.
+//
+//   LUMA:     The luma matte on track[i] dissolves image[i] away, revealing
+//             image[i+1] on the track BELOW. So we keep forward order —
+//             oldest image is index 0 (top), newest is last (bottom).
+//             As each luma plays it peels the top image away, revealing the next.
+//
+// INTRO FLASH (elegant only):
+//   An extra track is prepended at index 0 (topmost) containing a single warm-
+//   white overlay clip that fades out in the first second — a light-flare entry.
+//   It sits above everything and disappears quickly, then the luma transitions
+//   take over for the rest of the video.
 
 function buildTracks(pages: string[], style: Style): object[] {
   const { stride, clipLength, type } = style;
-  const isLast = (i: number) => i === pages.length - 1;
 
-  return pages.map((src, i) => {
-    const clipStart = i * stride;
-
-    if (type === 'luma') {
-      const luma = style.lumaCycle![i % style.lumaCycle!.length];
-      const lumaStart = clipStart + stride; // luma plays right when next image starts
-
-      const clips: object[] = [
-        {
-          asset: { type: 'image', src: src.trim() },
-          start: clipStart,
-          // Last image: just show for clipLength, no luma needed
-          // Other images: extend to cover the luma transition period
-          length: isLast(i) ? clipLength : stride + luma.duration,
-          fit: 'contain',
-          position: 'center',
-          transition: { in: 'none', out: 'none' },
-        },
-      ];
-
-      // Add luma clip on the same track (makes this image transparent at the boundary)
-      if (!isLast(i)) {
-        clips.unshift({
-          asset: { type: 'luma', src: luma.url },
-          start: lumaStart,
-          length: luma.duration,
-        });
-      }
-
-      return { clips };
-    } else {
-      // Standard transition — just the image clip with a built-in transition.in
+  if (type === 'standard') {
+    // ── Standard: one track per image, reversed so newest = topmost ──────────
+    const imageTracks = pages.map((src, i) => {
       const t = style.cycle![i % style.cycle!.length];
       return {
-        clips: [
-          {
-            asset: { type: 'image', src: src.trim() },
-            start: clipStart,
-            length: clipLength,
-            fit: 'contain',
-            position: 'center',
-            transition: { in: t.in, out: t.out },
-          },
-        ],
+        clips: [{
+          asset: { type: 'image', src: src.trim() },
+          start: i * stride,
+          length: clipLength,
+          fit: 'contain',
+          position: 'center',
+          transition: { in: t.in, out: t.out },
+        }],
       };
+    });
+
+    // Reverse: image N-1 (last/newest) becomes tracks[0] (topmost)
+    return imageTracks.reverse();
+  }
+
+  // ── Luma: one track per image, forward order (oldest = top) ─────────────────
+  // The luma on track[i] dissolves image[i], revealing image[i+1] on track[i+1].
+  const isLast = (i: number) => i === pages.length - 1;
+
+  const imageTracks = pages.map((src, i) => {
+    const clipStart = i * stride;
+    const luma = style.lumaCycle![i % style.lumaCycle!.length];
+    const lumaStart = clipStart + stride; // luma fires right when next image begins
+
+    // First clip: apply optional graceful entry + Ken Burns effect
+    const isFirst = i === 0;
+    const transitionIn = isFirst && style.firstClipIn ? style.firstClipIn : 'none';
+    const effect = isFirst && style.firstClipEffect ? style.firstClipEffect : undefined;
+
+    const imageClip: Record<string, any> = {
+      asset: { type: 'image', src: src.trim() },
+      start: clipStart,
+      // Last clip: just show for clipLength (no outgoing luma needed)
+      // Others: extend to cover the full luma transition window
+      length: isLast(i) ? clipLength : stride + luma.duration + 0.1,
+      fit: 'contain',
+      position: 'center',
+      transition: { in: transitionIn, out: 'none' },
+    };
+    if (effect) imageClip.effect = effect;
+
+    const clips: object[] = [imageClip];
+
+    // Add luma clip BEFORE image in the clips array (same track, applies to the image)
+    // The luma must be listed BEFORE the image clip in the clips array for Shotstack
+    if (!isLast(i)) {
+      clips.unshift({
+        asset: { type: 'luma', src: luma.url },
+        start: lumaStart,
+        length: luma.duration,
+      });
     }
+
+    return { clips };
   });
+
+  // Optionally prepend a warm light-flare overlay track (topmost, index 0)
+  if (style.introFlash) {
+    const flashTrack = {
+      clips: [{
+        asset: {
+          type: 'html',
+          html: '<p></p>',
+          width: 608,
+          height: 1080,
+          background: '#FFFBF0', // warm cream-white → simulates a golden light leak
+        },
+        start: 0,
+        length: 1.4,
+        opacity: 0.55,
+        transition: { in: 'none', out: 'fadeFast' },
+      }],
+    };
+    return [flashTrack, ...imageTracks];
+  }
+
+  return imageTracks;
 }
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
