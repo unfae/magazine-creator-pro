@@ -78,7 +78,7 @@ export function BulkTextEdit({ textIds, textBlocks, onBulkEdit }: BulkTextEditPr
         </div>
       </div>
 
-      <Button onClick={handleApplyAll} size="sm" className="mt-2">
+      <Button type="button" onClick={handleApplyAll} size="sm" className="mt-2">
         Apply to All
       </Button>
     </div>
