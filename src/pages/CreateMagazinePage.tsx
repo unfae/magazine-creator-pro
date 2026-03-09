@@ -282,8 +282,7 @@ export default function CreateMagazinePage() {
 
         const layout = pg.layout_json ?? {};
         (layout.textBlocks ?? []).forEach((tb: TextBlock) => {
-          const bulkValue = bulkTextValues[tb.id];
-          initialTexts[pn][tb.id] = bulkValue ?? tb.defaultText ?? '';
+          initialTexts[pn][tb.id] = tb.defaultText ?? '';
         });
         (layout.imageBlocks ?? []).forEach((ib: ImageBlock) => {
           initialImages[pn][ib.id] = '';
@@ -301,7 +300,7 @@ export default function CreateMagazinePage() {
     return () => {
       mounted = false;
     };
-    }, [templateSlug, bulkTextValues]);
+    }, [templateSlug]); // bulkTextValues intentionally excluded — onBulkEdit updates userTexts directly
 
   useEffect(() => {
     if (templatePages.length === 0) return;
