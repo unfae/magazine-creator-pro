@@ -1,3 +1,6 @@
+// src/App.tsx
+// Only change from current: added CreateAITemplatePage import and route
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +15,7 @@ import AuthPage from "@/pages/AuthPage";
 import DashboardPage from "@/pages/DashboardPage";
 import TemplatesPage from "@/pages/TemplatesPage";
 import CreateMagazinePage from "@/pages/CreateMagazinePage";
+import CreateAITemplatePage from "@/pages/CreateAITemplatePage"; // ← NEW
 import MagazinesPage from "@/pages/MagazinesPage";
 import ProfilePage from "@/pages/ProfilePage";
 import SettingsPage from "@/pages/SettingsPage";
@@ -25,11 +29,6 @@ import FAQsPage from "@/pages/FAQsPage";
 import ContactPage from "@/pages/ContactPage";
 import TemplateRequestPage from "@/pages/TemplateRequestPage";
 import PartnerPage from "@/pages/PartnerPage";
-
-
-
-
-
 
 const queryClient = new QueryClient();
 
@@ -59,17 +58,16 @@ const App = () => (
               {/* Authenticated */}
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/create/:templateSlug" element={<CreateMagazinePage />} />
+              <Route path="/create-ai/:templateSlug" element={<CreateAITemplatePage />} /> {/* ← NEW */}
               <Route path="/magazines" element={<MagazinesPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/templatepayment/callback" element={<TemplatePaymentCallbackPage />} />
-
             </Route>
 
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
-
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

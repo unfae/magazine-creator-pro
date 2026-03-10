@@ -1,80 +1,104 @@
-import { Template } from '@/types/magazine';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ArrowRight, Image, FileText, TrendingUp } from 'lucide-react';
-import { Link } from 'react-router-dom';
+// src/components/templates/TemplateCard.tsx
+// Changes from original:
+//   • AI⚡️ badge when template.template_type === 'ai'
+//   • Routes AI templates to /create-ai/:slug instead of /create/:slug
+
+import { useNavigate } from 'react-router-dom';
+import { Zap } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface TemplateCardProps {
-  template: Template;
+  template: any;
   usageCount?: number;
 }
 
-export function TemplateCard({ template, usageCount }: TemplateCardProps) {
-  const isFree = !template.price || template.price === 0;
+export function TemplateCard({ template, usageCount = 0 }: TemplateCardProps) {
+  const navigate = useNavigate();
+
+  const isAI     = template.template_type === 'ai';
+  const slug     = template.slug ?? template.id;
+  const route    = isAI ? `/create-ai/${slug}` : `/create/${slug}`;
+  const isFree   = !template.price || template.price === 0;
+  const price    = isFree ? null : `₦${Number(template.price).toLocaleString()}`;
+
+  function handleClick() {
+    navigate(route);
+  }
 
   return (
-    <Link to={`/create/${template.slug}`}>
-      <Card className="group overflow-hidden hover:shadow-elevated cursor-pointer">
-        <div className="aspect-[4/5] overflow-hidden relative">
+    <div
+      className="rounded-xl border bg-card overflow-hidden cursor-pointer group hover:shadow-md transition-shadow"
+      onClick={handleClick}
+    >
+      {/* Thumbnail */}
+      <div className="relative aspect-[3/4] w-full bg-muted overflow-hidden">
+        {template.thumbnailUrl ? (
           <img
             src={template.thumbnailUrl}
             alt={template.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-            <Button variant="gold" size="sm" className="w-full pointer-events-none">
-              Use Template
-              <ArrowRight className="h-4 w-4" />
-            </Button>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+            No preview
           </div>
-        </div>
+        )}
 
-        <div className="p-4">
-          {/* Tags row — category left, price right */}
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium px-2 py-1 bg-secondary rounded-full text-secondary-foreground">
-              {template.category}
+        {/* AI badge — top-left */}
+        {isAI && (
+          <span className="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-black/80 px-2 py-0.5 text-[10px] font-semibold text-yellow-400 backdrop-blur-sm">
+            <Zap className="h-3 w-3 fill-yellow-400" />
+            AI
+          </span>
+        )}
+
+        {/* Private badge — top-right */}
+        {template.private_template && (
+          <span className="absolute top-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+            Private
+          </span>
+        )}
+      </div>
+
+      {/* Card body */}
+      <div className="p-3 space-y-1.5">
+        {/* Category + price row */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground capitalize">
+            {template.category ?? ''}
+          </span>
+          {price ? (
+            <span className="text-xs font-semibold rounded-full bg-gold/10 text-gold px-2 py-0.5">
+              {price}
             </span>
-            {isFree ? (
-              <span className="text-xs font-medium px-2 py-1 bg-muted rounded-full text-muted-foreground">
-                Free
-              </span>
-            ) : (
-              <span className="text-xs font-medium px-2 py-1 bg-gold/10 text-gold rounded-full">
-                ₦{Number(template.price).toLocaleString()}
-              </span>
-            )}
-          </div>
-
-          <h3 className="font-serif text-xl font-medium mb-1">{template.name}</h3>
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-            {template.description}
-          </p>
-
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <FileText className="h-3.5 w-3.5" />
-              {template.pageCount} pages
-            </span>
-            <span className="flex items-center gap-1">
-              <Image className="h-3.5 w-3.5" />
-              {template.requiredPhotos} photos max.
-            </span>
-          </div>
-
-          {usageCount !== undefined && usageCount > 0 ? (
-            <div className="flex items-center gap-1 mt-2 text-xs text-gold font-medium">
-              <TrendingUp className="h-3.5 w-3.5" />
-              Loved {usageCount} {usageCount === 1 ? 'time' : 'times'}
-            </div>
           ) : (
-            <div className="flex items-center gap-1 mt-2 text-xs text-gold italic">
-              ✨ Be the first to use this template
-            </div>
+            <span className="text-xs font-semibold rounded-full bg-green-500/10 text-green-600 px-2 py-0.5">
+              Free
+            </span>
           )}
         </div>
-      </Card>
-    </Link>
+
+        {/* Template name */}
+        <p className="text-sm font-medium leading-snug line-clamp-2">{template.name}</p>
+
+        {/* Usage count */}
+        {usageCount > 0 && (
+          <p className="text-xs text-muted-foreground">{usageCount.toLocaleString()} uses</p>
+        )}
+
+        {/* CTA button */}
+        <button
+          onClick={(e) => { e.stopPropagation(); handleClick(); }}
+          className={cn(
+            'w-full mt-1 rounded-lg py-1.5 text-xs font-medium transition-colors',
+            isAI
+              ? 'bg-yellow-400/90 hover:bg-yellow-400 text-black'
+              : 'bg-foreground hover:bg-foreground/90 text-background'
+          )}
+        >
+          {template.cta_link_text ?? (isAI ? 'Create with AI' : 'Use Template')}
+        </button>
+      </div>
+    </div>
   );
 }
