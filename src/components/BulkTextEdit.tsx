@@ -63,8 +63,8 @@ export function BulkTextEdit({ textIds, textBlocks, onBulkEdit }: BulkTextEditPr
             const num = allBlocks.indexOf(tb) + 1;
             const placeholder =
               tb.defaultText && tb.defaultText !== tb.id
-                ? `e.g. ${tb.defaultText}`
-                : tb.id;
+                ? `Type ${tb.id} (e.g., ${tb.defaultText})`
+                : `Type ${tb.id}`;
 
             return (
               <div key={tb.id} className="flex items-center gap-2">
@@ -90,16 +90,15 @@ export function BulkTextEdit({ textIds, textBlocks, onBulkEdit }: BulkTextEditPr
             const num = allBlocks.indexOf(tb) + 1;
             const placeholder =
               tb.defaultText && tb.defaultText !== tb.id
-                ? `e.g. ${tb.defaultText}`
-                : tb.id;
+                ? `Type ${tb.id} (e.g., ${tb.defaultText})`
+                : `Type ${tb.id}`;
 
             return (
               <div key={tb.id} className="flex items-start gap-2">
                 <span className="text-xs text-muted-foreground w-5 text-right shrink-0 select-none mt-2.5">
                   {num}
                 </span>
-                <div className="flex-1 space-y-1">
-                  <p className="text-xs text-muted-foreground capitalize">{tb.id.replace(/_/g, ' ')}</p>
+                <div className="flex-1">
                   <textarea
                     rows={2}
                     value={values[tb.id] || ''}
