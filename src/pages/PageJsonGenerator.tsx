@@ -10,22 +10,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { generatePageLayout } from "@/lib/pageLayoutGenerator";
 
 export default function PageJsonGenerator() {
+  const [pageNumber, setPageNumber] = useState(1);
   const [photoSlots, setPhotoSlots] = useState(1);
   const [pngElements, setPngElements] = useState(1);
   const [textCount, setTextCount] = useState(1);
 
-  const [photosBaseUrl, setPhotosBaseUrl] = useState(
+  const [baseUrl, setBaseUrl] = useState(
     "https://<ref>.supabase.co/storage/v1/object/public/template_pages/elegance"
   );
-  const [pngBaseUrl, setPngBaseUrl] = useState(
-    "https://<ref>.supabase.co/storage/v1/object/public/template_pages/elegance"
-  );
-
   const [fontFamily, setFontFamily] = useState("PlayfairDisplay SC");
   const [textsRaw, setTextsRaw] = useState("title:Magazine Title");
 
   const layout = useMemo(() => {
-    const texts = textsRaw
+    // Parse textsRaw lines into { id, defaultText } objects
+    const parsed = textsRaw
       .split("\n")
       .map((s) => s.trim())
       .filter(Boolean)
@@ -37,25 +35,32 @@ export default function PageJsonGenerator() {
         };
       });
 
+    // Pad if textCount > lines provided
+    const texts = [...parsed];
+    while (texts.length < textCount) {
+      const i = texts.length + 1;
+      texts.push({ id: `text_${i}`, defaultText: `Text ${i}` });
+    }
+
     return generatePageLayout({
+      pageNumber,
       photoSlots,
       pngElements,
       textCount,
-      photosBaseUrl,
-      pngBaseUrl,
+      baseUrl,
       texts,
       fontFamily,
     });
-  }, [photoSlots, pngElements, textCount, photosBaseUrl, pngBaseUrl, textsRaw, fontFamily]);
+  }, [pageNumber, photoSlots, pngElements, textCount, baseUrl, textsRaw, fontFamily]);
 
   const jsonText = useMemo(() => JSON.stringify(layout, null, 2), [layout]);
 
   async function onCopy() {
     try {
       await navigator.clipboard.writeText(jsonText);
-      toast.success("JSON format copied successfully");
+      toast.success("JSON copied successfully");
     } catch {
-      toast.error("Copy failed. Please copy manually from the output box.");
+      toast.error("Copy failed — please copy manually from the output box.");
     }
   }
 
@@ -68,100 +73,121 @@ export default function PageJsonGenerator() {
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Controls */}
-        <div className="rounded-lg border bg-card p-4">
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="photoSlots">Photo slots</Label>
-                <Input
-                  id="photoSlots"
-                  type="number"
-                  min={0}
-                  value={photoSlots}
-                  onChange={(e) => setPhotoSlots(Number(e.target.value))}
-                />
-              </div>
+      <div className="grid gap-6 lg:grid-cols-2">
 
-              <div className="space-y-2">
-                <Label htmlFor="pngElements">PNG elements</Label>
-                <Input
-                  id="pngElements"
-                  type="number"
-                  min={0}
-                  value={pngElements}
-                  onChange={(e) => setPngElements(Number(e.target.value))}
-                />
-              </div>
+        {/* ── Controls ──────────────────────────────────────────────────────── */}
+        <div className="rounded-lg border bg-card p-4 space-y-4">
 
-              <div className="space-y-2">
-                <Label htmlFor="textCount">Text blocks</Label>
-                <Input
-                  id="textCount"
-                  type="number"
-                  min={0}
-                  value={textCount}
-                  onChange={(e) => setTextCount(Number(e.target.value))}
-                />
-              </div>
-            </div>
+          {/* Page number */}
+          <div className="space-y-1.5">
+            <Label htmlFor="pageNumber">Page number</Label>
+            <Input
+              id="pageNumber"
+              type="number"
+              min={1}
+              value={pageNumber}
+              onChange={(e) => setPageNumber(Math.max(1, Number(e.target.value)))}
+              className="w-full"
+            />
+            <p className="text-xs text-muted-foreground">
+              Sets file name prefix (page 2 → 2A, 2B…) and adds the pagination
+              element for pages 2+.
+            </p>
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="photosBaseUrl">Photos base URL</Label>
+          {/* Element counts — 1 col on mobile, 3 col on sm+ */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="photoSlots">Photo slots</Label>
               <Input
-                id="photosBaseUrl"
-                value={photosBaseUrl}
-                onChange={(e) => setPhotosBaseUrl(e.target.value)}
+                id="photoSlots"
+                type="number"
+                min={0}
+                value={photoSlots}
+                onChange={(e) => setPhotoSlots(Number(e.target.value))}
+                className="w-full"
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="pngBaseUrl">PNGs base URL</Label>
-              <Input id="pngBaseUrl" value={pngBaseUrl} onChange={(e) => setPngBaseUrl(e.target.value)} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="fontFamily">Font family</Label>
-              <Input id="fontFamily" value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="textsRaw">Texts (one per line: id:text)</Label>
-              <Textarea
-                id="textsRaw"
-                value={textsRaw}
-                onChange={(e) => setTextsRaw(e.target.value)}
-                className="min-h-28"
+            <div className="space-y-1.5">
+              <Label htmlFor="pngElements">PNG elements</Label>
+              <Input
+                id="pngElements"
+                type="number"
+                min={0}
+                value={pngElements}
+                onChange={(e) => setPngElements(Number(e.target.value))}
+                className="w-full"
               />
             </div>
-
-            <div className="flex items-center gap-3">
-              <Button variant="outline" onClick={onCopy} className="gap-2">
-                <Copy className="h-4 w-4" />
-                Copy JSON
-              </Button>
-
-              <div className="text-xs text-muted-foreground">
-                Page name: <span className="font-mono">{layout.pageName}</span>
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="textCount">Text blocks</Label>
+              <Input
+                id="textCount"
+                type="number"
+                min={0}
+                value={textCount}
+                onChange={(e) => setTextCount(Number(e.target.value))}
+                className="w-full"
+              />
             </div>
           </div>
+
+          {/* Single base URL */}
+          <div className="space-y-1.5">
+            <Label htmlFor="baseUrl">Base URL</Label>
+            <Input
+              id="baseUrl"
+              value={baseUrl}
+              onChange={(e) => setBaseUrl(e.target.value)}
+              className="w-full"
+            />
+            <p className="text-xs text-muted-foreground">
+              Used for both photo slots and PNG overlays.
+            </p>
+          </div>
+
+          {/* Font family */}
+          <div className="space-y-1.5">
+            <Label htmlFor="fontFamily">Font family</Label>
+            <Input
+              id="fontFamily"
+              value={fontFamily}
+              onChange={(e) => setFontFamily(e.target.value)}
+              className="w-full"
+            />
+          </div>
+
+          {/* Texts */}
+          <div className="space-y-1.5">
+            <Label htmlFor="textsRaw">Texts (one per line: id:default text)</Label>
+            <Textarea
+              id="textsRaw"
+              value={textsRaw}
+              onChange={(e) => setTextsRaw(e.target.value)}
+              className="min-h-28 w-full"
+            />
+          </div>
+
+          <Button type="button" variant="outline" onClick={onCopy} className="gap-2 w-full sm:w-auto">
+            <Copy className="h-4 w-4" />
+            Copy JSON
+          </Button>
         </div>
 
-        {/* Output */}
-        <div className="rounded-lg border bg-card p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">Output</div>
-              <div className="text-xs text-muted-foreground">Copy and paste into your template page record.</div>
-            </div>
+        {/* ── Output ────────────────────────────────────────────────────────── */}
+        <div className="rounded-lg border bg-card p-4 flex flex-col gap-3">
+          <div>
+            <p className="text-sm font-medium">Output</p>
+            <p className="text-xs text-muted-foreground">
+              Copy and paste into your template page record.
+            </p>
           </div>
 
-          <pre className="max-h-[520px] overflow-auto rounded-md bg-muted p-3 text-xs leading-relaxed">
+          <pre className="flex-1 max-h-[560px] overflow-auto rounded-md bg-muted p-3 text-xs leading-relaxed">
             {jsonText}
           </pre>
         </div>
+
       </div>
     </div>
   );
