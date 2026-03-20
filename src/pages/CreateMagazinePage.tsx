@@ -302,7 +302,7 @@ export default function CreateMagazinePage() {
     return () => {
       mounted = false;
     };
-    }, [templateSlug, bulkTextValues]);
+    }, [templateSlug]); // bulkTextValues intentionally excluded — onBulkEdit updates userTexts directly
 
   useEffect(() => {
     if (templatePages.length === 0) return;
@@ -572,29 +572,38 @@ export default function CreateMagazinePage() {
     setPhotos(newPhotos);
   };
 
-  const applyNextImageToTemplate = (imageUrl: string) => {
+  // applyNextImageToTemplate: fills the FIRST empty slot with the given URL.
+  // Called once per uploaded image during handleUploadAll so images fill slots
+  // in order without overwriting each other.
+  const applyNextImageToTemplate = (publicUrl: string) => {
     setUserImages((prev) => {
       const next = structuredClone(prev);
 
-      const allSlots: { pageNumber: number; slotId: string }[] = [];
+      // Find first empty editable slot across all pages
       for (const pg of templatePages) {
         const layout = pg.layout_json;
         if (!layout?.imageBlocks) continue;
         for (const ib of layout.imageBlocks) {
-          if (ib.editable !== false) {
-            allSlots.push({ pageNumber: pg.page_number, slotId: ib.id });
+          if (ib.editable === false) continue;
+          const existing = next[pg.page_number]?.[ib.id];
+          if (!existing) {
+            next[pg.page_number] ??= {};
+            next[pg.page_number][ib.id] = publicUrl;
+            return next; // fill one slot then stop
           }
         }
       }
 
-      const allImageUrls = photos;
-
-      for (let i = 0; i < allSlots.length; i++) {
-        const slot = allSlots[i];
-        const imageUrl = allImageUrls[i % allImageUrls.length];
-
-        next[slot.pageNumber] ??= {};
-        next[slot.pageNumber][slot.slotId] = imageUrl;
+      // All slots already filled — wrap around to first slot
+      for (const pg of templatePages) {
+        const layout = pg.layout_json;
+        if (!layout?.imageBlocks) continue;
+        for (const ib of layout.imageBlocks) {
+          if (ib.editable === false) continue;
+          next[pg.page_number] ??= {};
+          next[pg.page_number][ib.id] = publicUrl;
+          return next;
+        }
       }
 
       return next;
@@ -671,26 +680,13 @@ export default function CreateMagazinePage() {
         applyNextImageToTemplate(publicUrl);
       }
 
-      // ✅ AFTER ALL UPLOADS: loop over remaining empty slots
-      const emptySlots = getAvailableEmptySlots();
-      if (emptySlots.length > 0 && publicUrls.length > 0) {
-        emptySlots.forEach((slot, idx) => {
-          const imageUrl = publicUrls[idx % publicUrls.length];
-          setUserImages((prev) => {
-            const copy = { ...prev };
-            copy[slot.pageNumber] = { ...(copy[slot.pageNumber] || {}) };
-            copy[slot.pageNumber][slot.slotId] = imageUrl;
-            return copy;
-          });
-        });
-      }
-
       // Update photos once at the end
+      const totalFiles = filesRef.current.length; // capture before clearing
       setPhotos((prev) => [...prev, ...publicUrls]);
       filesRef.current = [];
 
       toast.success(
-        `Images uploaded successfully (${uploadedCount}/${filesRef.current.length})`,
+        `${uploadedCount} image${uploadedCount !== 1 ? 's' : ''} uploaded successfully`,
         { id: toastId }
       );
     } catch (err) {
@@ -817,11 +813,15 @@ export default function CreateMagazinePage() {
           return;
         }
 
+        // Strip any blob: URLs — only Supabase public URLs survive to the DB
         const pageUpserts = templatePages.map((pg) => ({
           magazine_id: magazineId,
           template_id: template.id,
           page_number: pg.page_number,
-          user_images: userImages[pg.page_number] ?? {},
+          user_images: Object.fromEntries(
+            Object.entries(userImages[pg.page_number] ?? {})
+              .filter(([, url]) => url && !url.startsWith('blob:'))
+          ),
           user_texts:  userTexts[pg.page_number]  ?? {},
         }));
 
@@ -860,11 +860,15 @@ export default function CreateMagazinePage() {
         return;
       }
 
+      // Strip any blob: URLs — only Supabase public URLs survive to the DB
       const pageInserts = templatePages.map((pg) => ({
         magazine_id: magData.id,
         template_id: template.id,
         page_number: pg.page_number,
-        user_images: userImages[pg.page_number] ?? {},
+        user_images: Object.fromEntries(
+          Object.entries(userImages[pg.page_number] ?? {})
+            .filter(([, url]) => url && !url.startsWith('blob:'))
+        ),
         user_texts:  userTexts[pg.page_number]  ?? {},
       }));
 
@@ -930,7 +934,10 @@ export default function CreateMagazinePage() {
               magazine_id: newMag.id,
               template_id: template.id,
               page_number: pg.page_number,
-              user_images: userImages[pg.page_number] ?? {},
+              user_images: Object.fromEntries(
+                Object.entries(userImages[pg.page_number] ?? {})
+                  .filter(([, url]) => url && !url.startsWith('blob:'))
+              ),
               user_texts:  userTexts[pg.page_number]  ?? {},
             }))
           );
