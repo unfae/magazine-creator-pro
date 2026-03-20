@@ -572,59 +572,35 @@ export default function CreateMagazinePage() {
     setPhotos(newPhotos);
   };
 
-  // applyNextImageToTemplate: fills the FIRST empty slot with the given URL.
-  // Called once per uploaded image during handleUploadAll so images fill slots
-  // in order without overwriting each other.
-  const applyNextImageToTemplate = (publicUrl: string) => {
-    setUserImages((prev) => {
-      const next = structuredClone(prev);
+  // applyAllImagesToTemplate: distributes all uploaded URLs across every
+  // editable slot, cycling/repeating as needed (e.g. 2 images → 8 slots = repeats).
+  const applyAllImagesToTemplate = (allUrls: string[]) => {
+    if (!allUrls.length) return;
+    setUserImages(() => {
+      const next: Record<number, Record<string, string>> = {};
 
-      // Find first empty editable slot across all pages
+      const allSlots: { pageNumber: number; slotId: string }[] = [];
       for (const pg of templatePages) {
         const layout = pg.layout_json;
         if (!layout?.imageBlocks) continue;
         for (const ib of layout.imageBlocks) {
-          if (ib.editable === false) continue;
-          const existing = next[pg.page_number]?.[ib.id];
-          if (!existing) {
-            next[pg.page_number] ??= {};
-            next[pg.page_number][ib.id] = publicUrl;
-            return next; // fill one slot then stop
+          if (ib.editable !== false) {
+            allSlots.push({ pageNumber: pg.page_number, slotId: ib.id });
           }
         }
       }
 
-      // All slots already filled — wrap around to first slot
-      for (const pg of templatePages) {
-        const layout = pg.layout_json;
-        if (!layout?.imageBlocks) continue;
-        for (const ib of layout.imageBlocks) {
-          if (ib.editable === false) continue;
-          next[pg.page_number] ??= {};
-          next[pg.page_number][ib.id] = publicUrl;
-          return next;
-        }
+      for (let i = 0; i < allSlots.length; i++) {
+        const slot = allSlots[i];
+        next[slot.pageNumber] ??= {};
+        next[slot.pageNumber][slot.slotId] = allUrls[i % allUrls.length];
       }
 
       return next;
     });
   };
 
-  const getAvailableEmptySlots = () => {
-    const emptySlots: { pageNumber: number; slotId: string }[] = [];
-    for (const pg of templatePages) {
-      const layout = pg.layout_json;
-      if (!layout?.imageBlocks) continue;
-      for (const ib of layout.imageBlocks) {
-        if (ib.editable === false) continue;
-        const imageUrl = (userImages[pg.page_number] || {})[ib.id] || '';
-        if (!imageUrl) {
-          emptySlots.push({ pageNumber: pg.page_number, slotId: ib.id });
-        }
-      }
-    }
-    return emptySlots;
-  };
+
 
 
   const handleUploadAll = async () => {
@@ -634,9 +610,11 @@ export default function CreateMagazinePage() {
     }
 
     setIsGenerating(true);
+    const filesToUpload = [...filesRef.current]; // snapshot before clearing
+    const totalFiles = filesToUpload.length;
+
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
-
       if (userError || !user) {
         toast.error('You must be signed in to upload images');
         setIsGenerating(false);
@@ -645,22 +623,24 @@ export default function CreateMagazinePage() {
       }
 
       const toastId = toast.loading(
-        `Uploading images… 0 of ${filesRef.current.length}`,
+        `Uploading 0 of ${totalFiles}…`,
         { position: 'top-left' }
       );
 
       let uploadedCount = 0;
       const publicUrls: string[] = [];
 
-      for (let i = 0; i < filesRef.current.length; i++) {
-        const file = filesRef.current[i];
-        const filePath = `${user.id}/${Date.now()}_${file.name}`;
+      // ── Upload files sequentially ──────────────────────────────────────────
+      for (let i = 0; i < filesToUpload.length; i++) {
+        const file = filesToUpload[i];
+        const filePath = `${user.id}/${Date.now()}_${i}_${file.name}`;
+
         const { data, error } = await supabase.storage
           .from('magazine-assets')
           .upload(filePath, file, { cacheControl: '3600', upsert: false });
 
         if (error) {
-          console.error(error);
+          console.error('Upload error:', error);
           continue;
         }
 
@@ -669,24 +649,28 @@ export default function CreateMagazinePage() {
           .getPublicUrl(data.path).data.publicUrl;
 
         publicUrls.push(publicUrl);
-
         uploadedCount++;
+
         toast.loading(
-          `Uploading images… ${uploadedCount} of ${filesRef.current.length} uploaded`,
+          `Uploading ${uploadedCount} of ${totalFiles}…`,
           { id: toastId }
         );
-
-        // ✅ Apply this image immediately to next slot
-        applyNextImageToTemplate(publicUrl);
       }
 
-      // Update photos once at the end
-      const totalFiles = filesRef.current.length; // capture before clearing
+      if (publicUrls.length === 0) {
+        toast.error('All uploads failed. Please try again.', { id: toastId });
+        return;
+      }
+
+      // ── After all uploads: distribute across ALL slots, cycling ────────────
+      applyAllImagesToTemplate(publicUrls);
+
+      // Update the photos preview strip
       setPhotos((prev) => [...prev, ...publicUrls]);
       filesRef.current = [];
 
       toast.success(
-        `${uploadedCount} image${uploadedCount !== 1 ? 's' : ''} uploaded successfully`,
+        `${uploadedCount} image${uploadedCount !== 1 ? 's' : ''} uploaded`,
         { id: toastId }
       );
     } catch (err) {
@@ -840,7 +824,46 @@ export default function CreateMagazinePage() {
         return;
       }
 
-      // ── Create new draft ───────────────────────────────────────────────────
+      // ── Create or find existing draft ────────────────────────────────────
+      // Check for an existing draft for this user+template to avoid duplicates
+      // when the user saves without having navigated from My Magazines.
+      const { data: existingDraft } = await supabase
+        .from('magazines')
+        .select('id')
+        .eq('owner', user.id)
+        .eq('template_id', template.id)
+        .eq('is_published', false)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingDraft?.id) {
+        // Reuse the existing draft — update it instead of inserting
+        setMagazineId(existingDraft.id);
+        await supabase.from('magazines').update({
+          title:      magazineTitle,
+          updated_at: new Date().toISOString(),
+        }).eq('id', existingDraft.id);
+
+        const pageUpserts = templatePages.map((pg) => ({
+          magazine_id: existingDraft.id,
+          template_id: template.id,
+          page_number: pg.page_number,
+          user_images: Object.fromEntries(
+            Object.entries(userImages[pg.page_number] ?? {})
+              .filter(([, url]) => url && !url.startsWith('blob:'))
+          ),
+          user_texts: userTexts[pg.page_number] ?? {},
+        }));
+
+        await supabase
+          .from('magazine_pages')
+          .upsert(pageUpserts, { onConflict: 'magazine_id,page_number' });
+
+        toast.success('Draft saved!');
+        return;
+      }
+
       const { data: magData, error: magError } = await supabase.from('magazines').insert([{
         owner:         user.id,
         title:         magazineTitle,
@@ -1830,7 +1853,7 @@ export default function CreateMagazinePage() {
             className="gap-2"
           >
             <FolderInput className="h-4 w-4" />
-            Save to Draft
+            {isGenerating ? 'Saving…' : 'Save to Draft'}
           </Button>
         </div>
 
@@ -1845,7 +1868,7 @@ export default function CreateMagazinePage() {
             className="gap-2"
           >
             <FolderInput className="h-4 w-4" />
-            Save to Draft
+            {isGenerating ? 'Saving…' : 'Save to Draft'}
           </Button>
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground">Download as:</span>

@@ -27,11 +27,16 @@ export function BulkTextEdit({ textIds, textBlocks, onBulkEdit }: BulkTextEditPr
       : [];
 
   const [values, setValues] = useState<Record<string, string>>({});
+  const [applied, setApplied] = useState(false);
 
   const handleChange = (id: string, value: string) =>
     setValues(prev => ({ ...prev, [id]: value }));
 
-  const handleApplyAll = () => onBulkEdit(values);
+  const handleApplyAll = () => {
+    onBulkEdit(values);
+    setApplied(true);
+    setTimeout(() => setApplied(false), 2500);
+  };
 
   // Split blocks into short (single-line) and long (paragraph) fields.
   // Short fields sit in a 3-col grid; long fields each span the full width below.
@@ -117,8 +122,9 @@ export function BulkTextEdit({ textIds, textBlocks, onBulkEdit }: BulkTextEditPr
         </div>
       )}
 
-      <Button type="button" onClick={handleApplyAll} size="sm">
-        Apply to All
+      <Button type="button" onClick={handleApplyAll} size="sm"
+        className={applied ? 'bg-green-600 hover:bg-green-600 text-white border-green-600' : ''}>
+        {applied ? 'Text Applied ✓' : 'Apply to All'}
       </Button>
     </div>
   );
