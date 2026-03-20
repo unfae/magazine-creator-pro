@@ -25,19 +25,17 @@ const DELETE_REASONS = [
 
 // ── Small confirm dialog ───────────────────────────────────────────────────────
 function ConfirmDialog({
-  open, title, children, confirmLabel, confirmClass, onConfirm, onCancel, confirmDisabled,
+  open, title, subtitle, children, confirmLabel, confirmClass, onConfirm, onCancel, confirmDisabled,
 }: {
-  open: boolean; title: string; children: React.ReactNode;
+  open: boolean; title: string; subtitle?: string; children: React.ReactNode;
   confirmLabel: string; confirmClass?: string;
   onConfirm: () => void; onCancel: () => void;
   confirmDisabled?: boolean;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  // Scroll dialog into view and lock body scroll when opened
   useEffect(() => {
     if (!open) return;
-    // Small timeout lets the DOM paint first
     const t = setTimeout(() => {
       dialogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 50);
@@ -56,7 +54,10 @@ function ConfirmDialog({
         className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-xl space-y-4"
         onClick={e => e.stopPropagation()}
       >
-        <h3 className="font-semibold text-base">{title}</h3>
+        <div>
+          <h3 className="font-semibold text-base">{title}</h3>
+          {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
+        </div>
         <div className="text-sm text-muted-foreground space-y-3">{children}</div>
         <div className="flex gap-2 justify-end pt-1">
           <Button variant="outline" size="sm" onClick={onCancel}>Cancel</Button>
@@ -281,13 +282,12 @@ export default function ProfilePage() {
         delete_reason:       finalReason || 'Not specified',
       }).eq('id', userId);
 
-      // 2. Open Google Form prefilled (opens in new tab, doesn't interrupt flow)
-      const formUrl = buildDeleteFormUrl({
-        email: profile.email,
-        name:  profile.full_name || profile.display_name || '',
+      // 2. Silently submit Google Form in background — user never sees it
+      await submitDeleteFormSilently({
+        email:  profile.email,
+        name:   profile.full_name || profile.display_name || '',
         reason: finalReason || 'Not specified',
       });
-      if (formUrl) window.open(formUrl, '_blank', 'noopener,noreferrer');
 
       // 3. Sign out
       await supabase.auth.signOut();
@@ -295,7 +295,7 @@ export default function ProfilePage() {
       toast.success('Your deletion request has been submitted. We\'ll process it within 48 hours.', {
         duration: 8000,
       });
-      navigate('/auth');
+      navigate('/profile');
     } catch (err) {
       console.error(err);
       toast.error('Something went wrong. Please contact support.');
@@ -305,24 +305,31 @@ export default function ProfilePage() {
     }
   }
 
-  // ── Google Form URL builder ────────────────────────────────────────────────
-  // TODO: Replace FORM_ID and entry IDs once you share your Google Form details
-  function buildDeleteFormUrl({ email, name, reason }: {
+  // ── Silent Google Form submit ─────────────────────────────────────────────
+  // POSTs directly to the form's response endpoint in the background.
+  // no-cors mode means we can't read the response — that's fine, we don't need to.
+  // The submission lands in your Google Sheet/form responses silently.
+  async function submitDeleteFormSilently({ email, name, reason }: {
     email: string; name: string; reason: string;
-  }): string | null {
+  }) {
     const FORM_ID      = '1FAIpQLSck5s4ZLRKN4k8yWMLcJUwsjest6rxPZXfNqG9ewVQ9gC0wow';
     const EMAIL_ENTRY  = 'entry.362754775';
     const NAME_ENTRY   = 'entry.626065731';
     const REASON_ENTRY = 'entry.1304540206';
 
-    const base = `https://docs.google.com/forms/d/e/${FORM_ID}/viewform`;
-    const params = new URLSearchParams({
-      [EMAIL_ENTRY]:  email,
-      [NAME_ENTRY]:   name,
-      [REASON_ENTRY]: reason,
-      usp: 'pp_url',
-    });
-    return `${base}?${params.toString()}`;
+    const body = new FormData();
+    body.append(EMAIL_ENTRY,  email);
+    body.append(NAME_ENTRY,   name);
+    body.append(REASON_ENTRY, reason);
+
+    try {
+      await fetch(
+        `https://docs.google.com/forms/d/e/${FORM_ID}/formResponse`,
+        { method: 'POST', body, mode: 'no-cors' }
+      );
+    } catch {
+      // Non-fatal — DB record is the source of truth, form is just a notification
+    }
   }
 
   // ── Sign out ───────────────────────────────────────────────────────────────
@@ -545,17 +552,15 @@ export default function ProfilePage() {
       {/* ── Delete account dialog ──────────────────────────────────────────── */}
       <ConfirmDialog
         open={showDeleteDialog}
-        title="Delete Account"
+        title="We are sad to see you go"
+        subtitle="Your request to delete your account will be processed shortly."
         confirmLabel={deletingAccount ? 'Processing…' : 'Submit Deletion Request'}
         confirmClass="bg-destructive text-destructive-foreground hover:bg-destructive/90"
         onConfirm={handleDeleteAccount}
         onCancel={() => setShowDeleteDialog(false)}
         confirmDisabled={!deleteReason || deletingAccount}
       >
-        <p>
-          This will permanently delete your account and all your magazines.
-          Please tell us why you're leaving:
-        </p>
+        <p>Please tell us why you're leaving:</p>
 
         {/* Reason selector */}
         <div className="space-y-1.5 pt-1">

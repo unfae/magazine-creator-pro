@@ -195,7 +195,7 @@ export default function AuthPage() {
 
                   {/* Forgot password — only shown on login */}
                   {isLogin && (
-                    <div className="flex justify-start pt-2">
+                    <div className="flex justify-start pt-4">
                       <button
                         type="button"
                         onClick={() => navigate('/forgot-password', {
