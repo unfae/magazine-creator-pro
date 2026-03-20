@@ -30,7 +30,7 @@ export default function SettingsPage() {
         <p className="text-muted-foreground mb-8">Customize your app experience</p>
       </div>
 
-      {/* Preferences */}
+      {/* Preferences.. */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
