@@ -195,13 +195,13 @@ export default function AuthPage() {
 
                   {/* Forgot password — only shown on login */}
                   {isLogin && (
-                    <div className="flex justify-end">
+                    <div className="flex justify-start pt-2">
                       <button
                         type="button"
                         onClick={() => navigate('/forgot-password', {
-                          state: { email: formData.email }, // pre-fill if they've typed it
+                          state: { email: formData.email },
                         })}
-                        className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+                        className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
                       >
                         Forgot password?
                       </button>

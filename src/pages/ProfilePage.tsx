@@ -14,9 +14,9 @@ import { useNavigate } from 'react-router-dom';
 
 // ── Delete reasons ─────────────────────────────────────────────────────────────
 const DELETE_REASONS = [
-  "I no longer need the app",
+  "I no longer need it",
   "I found a better alternative",
-  "The app is too expensive",
+  "It's too expensive",
   "I'm having technical issues",
   "Privacy concerns",
   "I created a duplicate account",
@@ -32,10 +32,30 @@ function ConfirmDialog({
   onConfirm: () => void; onCancel: () => void;
   confirmDisabled?: boolean;
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Scroll dialog into view and lock body scroll when opened
+  useEffect(() => {
+    if (!open) return;
+    // Small timeout lets the DOM paint first
+    const t = setTimeout(() => {
+      dialogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+    return () => clearTimeout(t);
+  }, [open]);
+
   if (!open) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-xl space-y-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={e => { if (e.target === e.currentTarget) onCancel(); }}
+    >
+      <div
+        ref={dialogRef}
+        className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-xl space-y-4"
+        onClick={e => e.stopPropagation()}
+      >
         <h3 className="font-semibold text-base">{title}</h3>
         <div className="text-sm text-muted-foreground space-y-3">{children}</div>
         <div className="flex gap-2 justify-end pt-1">
@@ -290,13 +310,10 @@ export default function ProfilePage() {
   function buildDeleteFormUrl({ email, name, reason }: {
     email: string; name: string; reason: string;
   }): string | null {
-    const FORM_ID = 'YOUR_FORM_ID_HERE'; // ← replace with your form ID
-    if (FORM_ID === 'YOUR_FORM_ID_HERE') return null; // skip until configured
-
-    // These entry IDs come from your form's prefill link — replace them
-    const EMAIL_ENTRY  = 'entry.000000001'; // ← replace
-    const NAME_ENTRY   = 'entry.000000002'; // ← replace
-    const REASON_ENTRY = 'entry.000000003'; // ← replace
+    const FORM_ID      = '1FAIpQLSck5s4ZLRKN4k8yWMLcJUwsjest6rxPZXfNqG9ewVQ9gC0wow';
+    const EMAIL_ENTRY  = 'entry.362754775';
+    const NAME_ENTRY   = 'entry.626065731';
+    const REASON_ENTRY = 'entry.1304540206';
 
     const base = `https://docs.google.com/forms/d/e/${FORM_ID}/viewform`;
     const params = new URLSearchParams({
@@ -479,11 +496,11 @@ export default function ProfilePage() {
           <button
             type="button"
             onClick={() => setShowExtra(v => !v)}
-            className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="mt-3 flex items-center gap-1.5 text-sm font-medium text-gold underline underline-offset-4 decoration-gold hover:opacity-80 transition-opacity"
           >
             {showExtra
-              ? <><ChevronUp className="h-3.5 w-3.5" />Show less</>
-              : <><ChevronDown className="h-3.5 w-3.5" />More fields — partner, birthday, anniversary…</>}
+              ? <><ChevronUp className="h-4 w-4" />Show less</>
+              : <><ChevronDown className="h-4 w-4" />Show more details</>}
           </button>
         </CardContent>
       </Card>
