@@ -839,8 +839,7 @@ export default function CreateMagazinePage() {
           return;
         }
 
-        toast.success('Draft updated!');
-        navigate('/magazines');
+        toast.success('Draft saved!');
         return;
       }
 
@@ -882,8 +881,7 @@ export default function CreateMagazinePage() {
       }
 
       setMagazineId(magData.id);
-      toast.success('Draft saved!');
-      navigate('/magazines');
+      toast.success('Draft saved! Find it in My Magazines.');
     } catch (err) {
       console.error(err);
       toast.error('Something went wrong while saving. Please try again');
@@ -1684,18 +1682,21 @@ export default function CreateMagazinePage() {
               </div>
             </div>
             {photos.length > 0 && (
-              <div className="grid grid-cols-4 gap-3 mt-4">
-                {photos.map((p, i) => (
-                  <div key={i} className="relative aspect-square rounded-md overflow-hidden">
-                    <img src={p} className="w-full h-full object-cover" />
-                    <button
-                      onClick={() => removePhoto(i)}
-                      className="absolute top-1 right-1 w-6 h-6 rounded-full bg-foreground/80 text-background flex items-center justify-center"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ))}
+              <div className="overflow-x-auto no-scrollbar mt-4">
+                <div className="flex gap-2" style={{ width: 'max-content' }}>
+                  {photos.map((p, i) => (
+                    <div key={i} className="relative rounded-md overflow-hidden flex-shrink-0"
+                      style={{ width: 56, height: 56 }}>
+                      <img src={p} className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => removePhoto(i)}
+                        className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-foreground/80 text-background flex items-center justify-center"
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
             <div className="flex gap-3 mt-4">
@@ -1806,6 +1807,7 @@ export default function CreateMagazinePage() {
             />
           </div>
           <Button
+            type="button"
             variant="outline"
             size="sm"
             onClick={handleGenerate}
@@ -1820,6 +1822,7 @@ export default function CreateMagazinePage() {
         {/* Desktop — side by side layout */}
         <div className="hidden sm:flex items-center justify-between gap-4">
           <Button
+            type="button"
             variant="outline"
             size="sm"
             onClick={handleGenerate}

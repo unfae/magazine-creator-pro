@@ -1,7 +1,4 @@
 // src/components/templates/TemplateCard.tsx
-// Changes from original:
-//   • AI⚡️ badge when template.template_type === 'ai'
-//   • Routes AI templates to /create-ai/:slug instead of /create/:slug
 
 import { useNavigate } from 'react-router-dom';
 import { Zap } from 'lucide-react';
@@ -15,11 +12,11 @@ interface TemplateCardProps {
 export function TemplateCard({ template, usageCount = 0 }: TemplateCardProps) {
   const navigate = useNavigate();
 
-  const isAI     = template.template_type === 'ai';
-  const slug     = template.slug ?? template.id;
-  const route    = isAI ? `/create-ai/${slug}` : `/create/${slug}`;
-  const isFree   = !template.price || template.price === 0;
-  const price    = isFree ? null : `₦${Number(template.price).toLocaleString()}`;
+  const isAI  = template.template_type === 'ai';
+  const slug  = template.slug ?? template.id;
+  const route = isAI ? `/create-ai/${slug}` : `/create/${slug}`;
+  const isFree = !template.price || template.price === 0;
+  const price  = isFree ? null : `₦${Number(template.price).toLocaleString()}`;
 
   function handleClick() {
     navigate(route);
@@ -44,7 +41,7 @@ export function TemplateCard({ template, usageCount = 0 }: TemplateCardProps) {
           </div>
         )}
 
-        {/* AI badge — top-left */}
+        {/* AI badge */}
         {isAI && (
           <span className="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-black/80 px-2 py-0.5 text-[10px] font-semibold text-yellow-400 backdrop-blur-sm">
             <Zap className="h-3 w-3 fill-yellow-400" />
@@ -52,7 +49,7 @@ export function TemplateCard({ template, usageCount = 0 }: TemplateCardProps) {
           </span>
         )}
 
-        {/* Private badge — top-right */}
+        {/* Private badge */}
         {template.private_template && (
           <span className="absolute top-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
             Private
@@ -72,7 +69,8 @@ export function TemplateCard({ template, usageCount = 0 }: TemplateCardProps) {
               {price}
             </span>
           ) : (
-            <span className="text-xs font-semibold rounded-full bg-green-500/10 text-green-600 px-2 py-0.5">
+            // Free tag uses foreground/background (adapts to dark/light theme) — no green
+            <span className="text-xs font-semibold rounded-full border border-foreground/20 text-foreground/70 px-2 py-0.5">
               Free
             </span>
           )}
@@ -81,14 +79,19 @@ export function TemplateCard({ template, usageCount = 0 }: TemplateCardProps) {
         {/* Template name */}
         <p className="text-sm font-medium leading-snug line-clamp-2">{template.name}</p>
 
-        {/* Usage count */}
-        {usageCount > 0 && (
-          <p className="text-xs text-muted-foreground">{usageCount.toLocaleString()} uses</p>
+        {/* Usage count — "loved X times" or "be the first to use it" */}
+        {usageCount > 0 ? (
+          <p className="text-xs text-muted-foreground">
+            loved {usageCount.toLocaleString()} {usageCount === 1 ? 'time' : 'times'}
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground italic">be the first to use it</p>
         )}
 
-        {/* CTA button */}
+        {/* CTA — always "Use Template" regardless of cta_link_text (that's for a different purpose) */}
         <button
-          onClick={(e) => { e.stopPropagation(); handleClick(); }}
+          type="button"
+          onClick={e => { e.stopPropagation(); handleClick(); }}
           className={cn(
             'w-full mt-1 rounded-lg py-1.5 text-xs font-medium transition-colors',
             isAI
@@ -96,7 +99,7 @@ export function TemplateCard({ template, usageCount = 0 }: TemplateCardProps) {
               : 'bg-foreground hover:bg-foreground/90 text-background'
           )}
         >
-          {template.cta_link_text ?? (isAI ? 'Create with AI' : 'Use Template')}
+          {isAI ? 'Create with AI' : 'Use Template'}
         </button>
       </div>
     </div>

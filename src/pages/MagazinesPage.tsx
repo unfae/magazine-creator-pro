@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Plus, Filter, Pencil, FileText, Video, BookOpen, Loader2 } from 'lucide-react';
+import { Plus, Filter, Pencil, FileText, Video, BookOpen, Loader2, MoreVertical, Trash2 } from 'lucide-react';
+import { useState as useLocalState } from 'react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -34,11 +35,56 @@ function MagazineCardSkeleton() {
         <div className="h-8 w-full rounded-lg bg-muted mt-2" />
       </div>
     </div>
+
+      {/* Delete confirmation modal */}
+      <DeleteModal
+        open={!!deleteTarget}
+        title={deleteTarget?.title ?? ''}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </div>
+  );
+}
+
+// ── Delete confirm modal ─────────────────────────────────────────────────────
+function DeleteModal({ open, title, onConfirm, onCancel }: {
+  open: boolean; title: string; onConfirm: () => void; onCancel: () => void;
+}) {
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={e => { if (e.target === e.currentTarget) onCancel(); }}
+    >
+      <div className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-xl space-y-4"
+        onClick={e => e.stopPropagation()}>
+        <h3 className="font-semibold text-base">Delete magazine?</h3>
+        <p className="text-sm text-muted-foreground">
+          "<span className="font-medium text-foreground">{title || 'Untitled'}</span>" will be permanently deleted. This cannot be undone.
+        </p>
+        <div className="flex gap-2 justify-end">
+          <button type="button" onClick={onCancel}
+            className="px-4 py-2 text-sm rounded-lg border border-input hover:bg-muted transition-colors">
+            Cancel
+          </button>
+          <button type="button" onClick={onConfirm}
+            className="px-4 py-2 text-sm rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors">
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
 // ── Magazine card ─────────────────────────────────────────────────────────────
-function MagazineCard({ magazine, onEdit }: { magazine: Magazine; onEdit: (m: Magazine) => void }) {
+function MagazineCard({ magazine, onEdit, onDelete }: {
+  magazine: Magazine;
+  onEdit: (m: Magazine) => void;
+  onDelete: (m: Magazine) => void;
+}) {
+  const [menuOpen, setMenuOpen] = useLocalState(false);
   const isExported = magazine.is_published || !!magazine.export_type;
   const exportIcon = magazine.export_type === 'video'
     ? <Video className="h-3 w-3" />
@@ -68,13 +114,38 @@ function MagazineCard({ magazine, onEdit }: { magazine: Magazine; onEdit: (m: Ma
         {/* Status badge */}
         <span className={cn(
           'absolute top-2 left-2 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold backdrop-blur-sm',
-          isExported
-            ? 'bg-green-500/80 text-white'
-            : 'bg-black/60 text-white'
+          isExported ? 'bg-gold/80 text-black' : 'bg-black/60 text-white'
         )}>
           {exportIcon}
           {isExported ? (magazine.export_type?.toUpperCase() ?? 'Exported') : 'Draft'}
         </span>
+
+        {/* 3-dot menu — top right */}
+        <div className="absolute top-1.5 right-1.5">
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); setMenuOpen(v => !v); }}
+            className="w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+          >
+            <MoreVertical className="h-3.5 w-3.5" />
+          </button>
+          {menuOpen && (
+            <>
+              {/* click-away overlay */}
+              <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+              <div className="absolute right-0 top-8 z-20 w-32 rounded-lg border bg-card shadow-lg overflow-hidden">
+                <button
+                  type="button"
+                  onClick={e => { e.stopPropagation(); setMenuOpen(false); onDelete(magazine); }}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Card body */}
@@ -106,6 +177,8 @@ export default function MagazinesPage() {
   const [filter, setFilter] = useState<FilterType>('all');
   const [magazines, setMagazines] = useState<Magazine[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<Magazine | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -141,6 +214,25 @@ export default function MagazinesPage() {
 
     return () => { mounted = false; };
   }, [navigate]);
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      // Delete pages first (FK constraint)
+      await supabase.from('magazine_pages').delete().eq('magazine_id', deleteTarget.id);
+      const { error } = await supabase.from('magazines').delete().eq('id', deleteTarget.id);
+      if (error) throw error;
+      setMagazines(prev => prev.filter(m => m.id !== deleteTarget.id));
+      toast.success('Magazine deleted');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete magazine');
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
+    }
+  }
 
   function handleEdit(magazine: Magazine) {
     // Navigate back to create page with magazine data pre-loaded
@@ -206,7 +298,7 @@ export default function MagazinesPage() {
       ) : filtered.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {filtered.map(m => (
-            <MagazineCard key={m.id} magazine={m} onEdit={handleEdit} />
+            <MagazineCard key={m.id} magazine={m} onEdit={handleEdit} onDelete={setDeleteTarget} />
           ))}
         </div>
       ) : (
