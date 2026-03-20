@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Upload, X, Image, ArrowLeft, Sparkles, ChevronLeft, ChevronRight, Download, Tag } from 'lucide-react';
+import { Upload, X, Image, ArrowLeft, Sparkles, ChevronLeft, ChevronRight, Download, Tag, FolderInput } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTemplateAccess } from '@/hooks/useTemplateAccess'
 import { cn } from '@/lib/utils';
@@ -75,6 +75,7 @@ export default function CreateMagazinePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [videoAccessKey, setVideoAccessKey] = useState(0);     // increments to force useVideoAccess re-check
   const [templateAccessKey, setTemplateAccessKey] = useState(0); // increments to force useTemplateAccess re-check
+  const [magazineId, setMagazineId] = useState<string | null>(null); // set when editing an existing draft
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
   const perSlotFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -282,7 +283,8 @@ export default function CreateMagazinePage() {
 
         const layout = pg.layout_json ?? {};
         (layout.textBlocks ?? []).forEach((tb: TextBlock) => {
-          initialTexts[pn][tb.id] = tb.defaultText ?? '';
+          const bulkValue = bulkTextValues[tb.id];
+          initialTexts[pn][tb.id] = bulkValue ?? tb.defaultText ?? '';
         });
         (layout.imageBlocks ?? []).forEach((ib: ImageBlock) => {
           initialImages[pn][ib.id] = '';
@@ -300,7 +302,7 @@ export default function CreateMagazinePage() {
     return () => {
       mounted = false;
     };
-    }, [templateSlug]); // bulkTextValues intentionally excluded — onBulkEdit updates userTexts directly
+    }, [templateSlug, bulkTextValues]);
 
   useEffect(() => {
     if (templatePages.length === 0) return;
@@ -405,6 +407,48 @@ export default function CreateMagazinePage() {
       }
     })();
   }, []);
+
+  // ── Load existing draft when ?magazine=<id> is in the URL ─────────────────
+  // Runs once templatePages have loaded. Restores title, texts, and image URLs.
+  useEffect(() => {
+    const mid = searchParams.get('magazine');
+    if (!mid || !templatePages.length) return;
+
+    (async () => {
+      setMagazineId(mid);
+
+      const { data: mag } = await supabase
+        .from('magazines')
+        .select('title')
+        .eq('id', mid)
+        .maybeSingle();
+      if (mag?.title) setTitle(mag.title);
+
+      const { data: savedPages } = await supabase
+        .from('magazine_pages')
+        .select('page_number, user_texts, user_images')
+        .eq('magazine_id', mid);
+
+      if (!savedPages?.length) return;
+
+      const restoredTexts: Record<number, Record<string, string>> = {};
+      const restoredImages: Record<number, Record<string, string>> = {};
+
+      savedPages.forEach((p: any) => {
+        restoredTexts[p.page_number] = p.user_texts ?? {};
+        restoredImages[p.page_number] = p.user_images ?? {};
+      });
+
+      setUserTexts(restoredTexts);
+      setUserImages(restoredImages);
+
+      // Populate the photos strip so images are visible
+      const allUrls = Object.values(restoredImages)
+        .flatMap(v => Object.values(v))
+        .filter(Boolean) as string[];
+      if (allUrls.length) setPhotos(allUrls);
+    })();
+  }, [templatePages.length]); // runs once pages are loaded
 
   if (loadingTemplate) {
     return (
@@ -749,69 +793,100 @@ export default function CreateMagazinePage() {
   };
 
   const handleGenerate = async () => {
-    if (!title.trim()) {
-      toast.error('Please enter a magazine title');
-      return;
-    }
-
     setIsGenerating(true);
 
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
-
       if (userError || !user) {
-        toast.error('You must be signed in to generate a magazine');
+        toast.error('You must be signed in to save a draft');
         setIsGenerating(false);
         navigate('/auth?mode=login');
         return;
       }
 
-      const { data: magData, error: magError } = await supabase.from('magazines').insert([
-        {
-          owner: user.id,
-          title: title,
-          description: template.description ?? null,
+      const magazineTitle = title.trim() || template.name || 'My Magazine';
+
+      // ── Update existing draft ──────────────────────────────────────────────
+      if (magazineId) {
+        const { error: updateErr } = await supabase.from('magazines').update({
+          title: magazineTitle,
+          updated_at: new Date().toISOString(),
+        }).eq('id', magazineId);
+
+        if (updateErr) {
+          console.error('Error updating magazine:', updateErr);
+          toast.error('Failed to update draft');
+          setIsGenerating(false);
+          return;
+        }
+
+        const pageUpserts = templatePages.map((pg) => ({
+          magazine_id: magazineId,
           template_id: template.id,
-          thumbnail_url: template.thumbnail_url ?? null,
-          metadata: JSON.stringify({ createdFromTemplate: template.id }),
-          is_published: false,
-        },
-      ]).select().single();
+          page_number: pg.page_number,
+          user_images: userImages[pg.page_number] ?? {},
+          user_texts:  userTexts[pg.page_number]  ?? {},
+        }));
+
+        const { error: pagesErr } = await supabase
+          .from('magazine_pages')
+          .upsert(pageUpserts, { onConflict: 'magazine_id,page_number' });
+
+        if (pagesErr) {
+          console.error('Error updating magazine pages:', pagesErr);
+          toast.error('Failed to update draft pages');
+          setIsGenerating(false);
+          return;
+        }
+
+        toast.success('Draft updated!');
+        navigate('/magazines');
+        return;
+      }
+
+      // ── Create new draft ───────────────────────────────────────────────────
+      const { data: magData, error: magError } = await supabase.from('magazines').insert([{
+        owner:         user.id,
+        title:         magazineTitle,
+        description:   template.description ?? null,
+        template_id:   template.id,
+        template_slug: template.slug ?? null,
+        template_name: template.name ?? null,
+        thumbnail_url: template.thumbnailUrl ?? template.thumbnail_url ?? null,
+        metadata:      JSON.stringify({ createdFromTemplate: template.id }),
+        is_published:  false,
+      }]).select().single();
 
       if (magError || !magData) {
         console.error('Error creating magazine:', magError);
-        toast.error('Failed to create magazine');
+        toast.error('Failed to save draft');
         setIsGenerating(false);
         return;
       }
 
-      const pageInserts = templatePages.map((pg) => {
-        const pn = pg.page_number;
-        const pageUserImages = userImages[pn] ?? {};
-        const pageUserTexts = userTexts[pn] ?? {};
-        return {
-          magazine_id: magData.id,
-          template_id: template.id,
-          page_number: pn,
-          user_images: pageUserImages,
-          user_texts: pageUserTexts,
-        };
-      });
+      const pageInserts = templatePages.map((pg) => ({
+        magazine_id: magData.id,
+        template_id: template.id,
+        page_number: pg.page_number,
+        user_images: userImages[pg.page_number] ?? {},
+        user_texts:  userTexts[pg.page_number]  ?? {},
+      }));
 
       const { error: pagesError } = await supabase.from('magazine_pages').insert(pageInserts);
 
       if (pagesError) {
         console.error('Error inserting magazine pages:', pagesError);
-        toast.error('Failed to save magazine pages');
+        toast.error('Failed to save draft pages');
         setIsGenerating(false);
         return;
       }
 
-      toast.success('Magazine saved as draft successfully!');
+      setMagazineId(magData.id);
+      toast.success('Draft saved!');
       navigate('/magazines');
     } catch (err) {
       console.error(err);
-      toast.error('Something went wrong while saving magazine. Please refresh and try again');
+      toast.error('Something went wrong while saving. Please try again');
     } finally {
       setIsGenerating(false);
     }
@@ -823,6 +898,54 @@ export default function CreateMagazinePage() {
   const goNext = () => setCurrentPageIndex((i) => Math.min(templatePages.length - 1, i + 1));
 
 
+
+  // ── Save/update magazine record after a successful export ─────────────────
+  const saveMagazineAfterExport = async (exportType: 'pdf' | 'video') => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const magazineTitle = title.trim() || template.name || 'My Magazine';
+
+      if (magazineId) {
+        await supabase.from('magazines').update({
+          title:        magazineTitle,
+          is_published: true,
+          export_type:  exportType,
+          updated_at:   new Date().toISOString(),
+        }).eq('id', magazineId);
+      } else {
+        const { data: newMag } = await supabase.from('magazines').insert([{
+          owner:         user.id,
+          title:         magazineTitle,
+          description:   template.description ?? null,
+          template_id:   template.id,
+          template_slug: template.slug ?? null,
+          template_name: template.name ?? null,
+          thumbnail_url: template.thumbnailUrl ?? template.thumbnail_url ?? null,
+          is_published:  true,
+          export_type:   exportType,
+          metadata:      JSON.stringify({ createdFromTemplate: template.id }),
+        }]).select().single();
+
+        if (newMag) {
+          setMagazineId(newMag.id);
+          await supabase.from('magazine_pages').insert(
+            templatePages.map((pg) => ({
+              magazine_id: newMag.id,
+              template_id: template.id,
+              page_number: pg.page_number,
+              user_images: userImages[pg.page_number] ?? {},
+              user_texts:  userTexts[pg.page_number]  ?? {},
+            }))
+          );
+        }
+      }
+    } catch (e) {
+      // Non-fatal — the actual export still succeeded
+      console.error('Failed to save magazine record after export:', e);
+    }
+  };
 
   // Add this inside CreateMagazinePage, ABOVE handleExportPDF
   const renderPageToImageUrl = async (pg: TemplatePage): Promise<string | null> => {
@@ -992,7 +1115,13 @@ export default function CreateMagazinePage() {
       const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'user';
       const safe = (s: string) => s.replace(/[^a-z0-9]/gi, '_').toLowerCase();
 
-      pdf.save(`${safe(userName)}_${safe(template.name)}_magazine.pdf`);
+      const fileTitle = title.trim()
+        ? safe(title.trim())
+        : `${safe(userName)}_${safe(template.name)}_magazine`;
+      pdf.save(`${fileTitle}.pdf`);
+
+      // Save magazine record after export
+      await saveMagazineAfterExport('pdf');
 
       try {
         await logTemplateExport({
@@ -1114,6 +1243,9 @@ export default function CreateMagazinePage() {
 
       // Hand off to Shotstack (IMPORTANT: pass toastId + current progress)
       await exportVideo(pageUrls, template, user.id, toastId, progress);
+
+      // Save magazine record after export
+      await saveMagazineAfterExport('video');
 
       try {
         // ✅ Log video export with paid flag
@@ -1640,29 +1772,88 @@ export default function CreateMagazinePage() {
         onChange={handlePerSlotFileSelect}
       />
 
-      <div className="flex flex-wrap justify-end gap-3 mt-4">
-        <PageDownloadDialog
-          pageNumbers={pageNumbers}
-          templateId={template.id}
-          templateName={template.name}
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleExportPDF}
-          disabled={isGenerating || templatePages.length === 0}
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Export PDF
-        </Button>
+      {/* ── Export + Save ─────────────────────────────────────────────────── */}
+      <div className="mt-6">
 
-        <VideoExportDialog
-          template={template}
-          templatePages={templatePages}
-          renderPageToImageUrl={renderPageToImageUrl}
-          disabled={isGenerating}
-          refetchKey={videoAccessKey}
-        />
+        {/* Mobile — stacked layout matching screenshots */}
+        <div className="flex flex-col items-center gap-4 sm:hidden">
+          <div className="w-full flex items-center gap-3">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-sm font-medium text-muted-foreground">Download as</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+          <div className="flex gap-2 w-full justify-center">
+            <PageDownloadDialog
+              pageNumbers={pageNumbers}
+              templateId={template.id}
+              templateName={template.name}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportPDF}
+              disabled={isGenerating || templatePages.length === 0}
+            >
+              <Download className="h-3.5 w-3.5 mr-1" />
+              PDF
+            </Button>
+            <VideoExportDialog
+              template={template}
+              templatePages={templatePages}
+              renderPageToImageUrl={renderPageToImageUrl}
+              disabled={isGenerating}
+              refetchKey={videoAccessKey}
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleGenerate}
+            disabled={isGenerating || templatePages.length === 0}
+            className="gap-2"
+          >
+            <FolderInput className="h-4 w-4" />
+            Save to Draft
+          </Button>
+        </div>
+
+        {/* Desktop — side by side layout */}
+        <div className="hidden sm:flex items-center justify-between gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleGenerate}
+            disabled={isGenerating || templatePages.length === 0}
+            className="gap-2"
+          >
+            <FolderInput className="h-4 w-4" />
+            Save to Draft
+          </Button>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Download as:</span>
+            <PageDownloadDialog
+              pageNumbers={pageNumbers}
+              templateId={template.id}
+              templateName={template.name}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportPDF}
+              disabled={isGenerating || templatePages.length === 0}
+            >
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              PDF
+            </Button>
+            <VideoExportDialog
+              template={template}
+              templatePages={templatePages}
+              renderPageToImageUrl={renderPageToImageUrl}
+              disabled={isGenerating}
+              refetchKey={videoAccessKey}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
