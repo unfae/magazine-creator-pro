@@ -441,12 +441,9 @@ export default function CreateMagazinePage() {
 
       setUserTexts(restoredTexts);
       setUserImages(restoredImages);
-
-      // Populate the photos strip so images are visible
-      const allUrls = Object.values(restoredImages)
-        .flatMap(v => Object.values(v))
-        .filter(Boolean) as string[];
-      if (allUrls.length) setPhotos(allUrls);
+      // Note: we intentionally do NOT set photos[] from restored images.
+      // photos[] is for the local upload strip only (uses blob URLs).
+      // userImages[] already has the correct Supabase public URLs from the DB.
     })();
   }, [templatePages.length]); // runs once pages are loaded
 
@@ -1661,34 +1658,45 @@ export default function CreateMagazinePage() {
               onChange={handleFileSelect}
               className="hidden"
             />
-            <div
-              onClick={() => {
-                if (!isSignedIn) {
-                  toast.error('You must be signed in to upload images');
-                  navigate('/auth?mode=login');
-                  return;
-                }
-                bulkFileInputRef.current?.click();
-              }}
-              className={cn(
-                'border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all',
-                photos.length === 0 ? 'border-border' : 'border-gold/30'
-              )}
-            >
-              <div className="flex flex-col items-center gap-2">
-                <Upload className="h-6 w-6 text-muted-foreground" />
-                <p className="font-medium">Click to upload photos</p>
-                <p className="text-sm text-muted-foreground">{photos.length} selected</p>
+            {!isSignedIn ? (
+              // Signed-out state — visually disabled, no file picker
+              <div className="border-2 border-dashed rounded-lg p-6 text-center opacity-60 cursor-not-allowed border-border">
+                <div className="flex flex-col items-center gap-2">
+                  <Upload className="h-6 w-6 text-muted-foreground" />
+                  <p className="font-medium text-muted-foreground">Sign in to upload photos</p>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/auth?mode=login')}
+                    className="text-xs text-gold underline underline-offset-2 mt-1"
+                  >
+                    Sign in →
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div
+                onClick={() => bulkFileInputRef.current?.click()}
+                className={cn(
+                  'border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all',
+                  photos.length === 0 ? 'border-border' : 'border-gold/30'
+                )}
+              >
+                <div className="flex flex-col items-center gap-2">
+                  <Upload className="h-6 w-6 text-muted-foreground" />
+                  <p className="font-medium">Click to upload photos</p>
+                  <p className="text-sm text-muted-foreground">{photos.length} selected</p>
+                </div>
+              </div>
+            )}
             {photos.length > 0 && (
               <div className="overflow-x-auto no-scrollbar mt-4">
                 <div className="flex gap-2" style={{ width: 'max-content' }}>
                   {photos.map((p, i) => (
-                    <div key={i} className="relative rounded-md overflow-hidden flex-shrink-0"
-                      style={{ width: 56, height: 56 }}>
+                    <div key={i}
+                      className="relative rounded-md overflow-hidden flex-shrink-0 w-14 h-14 sm:w-20 sm:h-20">
                       <img src={p} className="w-full h-full object-cover" />
                       <button
+                        type="button"
                         onClick={() => removePhoto(i)}
                         className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-foreground/80 text-background flex items-center justify-center"
                       >

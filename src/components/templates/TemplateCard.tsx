@@ -61,7 +61,7 @@ export function TemplateCard({ template, usageCount = 0 }: TemplateCardProps) {
       <div className="p-3 space-y-1.5">
         {/* Category + price row */}
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground capitalize">
+          <span className="text-xs font-medium capitalize rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
             {template.category ?? ''}
           </span>
           {price ? (

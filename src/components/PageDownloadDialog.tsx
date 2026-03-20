@@ -27,7 +27,7 @@ export function PageDownloadDialog({
   pageNumbers,
   templateId,
   templateName,
-  triggerLabel = 'Download as Images',
+  triggerLabel = 'Images',
 }: PageDownloadDialogProps) {
   const {
     selectedPages,

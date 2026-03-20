@@ -181,7 +181,7 @@ export function VideoExportDialog({
           disabled={disabled || templatePages.length === 0}
         >
           <Sparkles className="h-4 w-4 mr-2" />
-          Export Video
+          Video
         </Button>
       </DialogTrigger>
 

@@ -93,7 +93,10 @@ function MagazineCard({ magazine, onEdit, onDelete }: {
     .toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
   return (
-    <div className="rounded-xl border bg-card overflow-hidden group hover:shadow-md transition-shadow">
+    <div
+      className="rounded-xl border bg-card overflow-hidden group hover:shadow-md transition-shadow cursor-pointer"
+      onClick={() => onEdit(magazine)}
+    >
       {/* Thumbnail */}
       <div className="relative aspect-[3/4] w-full bg-muted overflow-hidden">
         {magazine.thumbnail_url ? (
@@ -156,10 +159,10 @@ function MagazineCard({ magazine, onEdit, onDelete }: {
         <Button
           size="sm" variant="outline"
           className="w-full mt-1 gap-2 text-xs"
-          onClick={() => onEdit(magazine)}
+          onClick={e => { e.stopPropagation(); onEdit(magazine); }}
         >
           <Pencil className="h-3.5 w-3.5" />
-          Edit & Export
+          Open
         </Button>
       </div>
     </div>
