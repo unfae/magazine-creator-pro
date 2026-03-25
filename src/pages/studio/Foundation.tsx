@@ -355,7 +355,7 @@ function PageMockup({ page, brief, colorDirection }: MockupProps) {
       </div>
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: accent }} />
       {pagination}
-    </div></div>
+    </div>
   );
 }
 
@@ -667,6 +667,6 @@ export default function Foundation() {
 
         </div>
       )}
-    </div>
+    </div></div>
   );
 }
