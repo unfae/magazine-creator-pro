@@ -1,7 +1,7 @@
 // src/pages/studio/PageBuilder.tsx — dark theme, full variance for image blocks,
 // tag-based font family per text, custom IDs, SVG elements, palette colour groups
 
-import { useMemo, useState, useRef, KeyboardEvent } from 'react';
+import { useMemo, useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Copy, Eye, Plus, Trash2, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import { toast } from 'sonner';
@@ -347,22 +347,61 @@ function ColourGroupEditor({ groups, onChange }: {
 
 // ── JSON output ───────────────────────────────────────────────────────────────
 function JsonOutput({ text, label }: { text: string; label: string }) {
+  // Editable: starts with the generated JSON, user can tweak before copying
+  const [edited, setEdited] = useState(text);
+  const [valid, setValid]   = useState(true);
+
+  // Sync when parent regenerates (but don't overwrite user edits mid-session)
+  const prevText = useRef(text);
+  useEffect(() => {
+    if (text !== prevText.current) {
+      setEdited(text);
+      prevText.current = text;
+      setValid(true);
+    }
+  }, [text]);
+
+  function handleChange(val: string) {
+    setEdited(val);
+    try { JSON.parse(val); setValid(true); }
+    catch { setValid(false); }
+  }
+
   async function copy() {
-    try { await navigator.clipboard.writeText(text); toast.success('Copied!'); }
+    try { await navigator.clipboard.writeText(edited); toast.success('Copied!'); }
     catch { toast.error('Copy failed'); }
   }
+
+  function reset() { setEdited(text); setValid(true); }
+
   return (
     <div className="rounded-xl border border-border bg-card p-4 flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <p className="text-[10px] font-semibold text-gold uppercase tracking-widest">{label}</p>
-        <button type="button" onClick={copy}
-          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
-          <Copy className="h-3 w-3" /> Copy
-        </button>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-semibold text-gold uppercase tracking-widest flex-1 min-w-0 truncate">{label}</p>
+        <div className="flex items-center gap-2 shrink-0">
+          {!valid && (
+            <span className="text-[10px] text-destructive font-medium">Invalid JSON</span>
+          )}
+          {edited !== text && (
+            <button type="button" onClick={reset}
+              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+              Reset
+            </button>
+          )}
+          <button type="button" onClick={copy}
+            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+            <Copy className="h-3 w-3" /> Copy
+          </button>
+        </div>
       </div>
-      <pre className="max-h-[480px] overflow-auto rounded-lg bg-background p-3 text-[11px] leading-relaxed text-foreground/90 font-mono whitespace-pre-wrap">
-        {text}
-      </pre>
+      <textarea
+        value={edited}
+        onChange={e => handleChange(e.target.value)}
+        spellCheck={false}
+        className={`min-h-[400px] max-h-[600px] w-full rounded-lg bg-background p-3 text-[11px] leading-relaxed font-mono resize-y focus:outline-none border transition-colors ${
+          valid ? 'border-border focus:border-gold' : 'border-destructive/60'
+        }`}
+      />
     </div>
   );
 }
@@ -477,7 +516,7 @@ export default function PageBuilder() {
   );
 
   return (
-    <div className={D.page}>
+    <div className={D.page + " dark"}>
       <div className="mx-auto max-w-7xl px-4 py-10">
         <div className="mb-6">
           <p className="text-[10px] text-gold uppercase tracking-widest mb-1">Studio</p>

@@ -554,7 +554,7 @@ export default function Foundation() {
   const accent = brief.accentColorHint?.match(/#[0-9a-fA-F]{6}/)?.[0] ?? '#C69339';
 
   return (
-    <div className="min-h-screen bg-background text-foreground"><div className="mx-auto max-w-5xl px-4 py-10">
+    <div className="min-h-screen bg-background text-foreground dark"><div className="mx-auto max-w-5xl px-4 py-10">
 
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4 mb-8">

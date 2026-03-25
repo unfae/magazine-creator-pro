@@ -151,7 +151,7 @@ export default function BriefBuilder() {
   }
 
   return (
-    <div className={S.page}>
+    <div className={S.page + " dark"}>
       <div className="mx-auto max-w-2xl px-4 py-10">
         <div className="mb-8">
           <p className="text-[10px] text-gold uppercase tracking-widest mb-1">Studio</p>
