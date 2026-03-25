@@ -852,8 +852,19 @@ export default function CreateAITemplatePage() {
             </div>
           )}
 
-          {/* Palette selector */}
-          {palettes.length > 0 && (
+          {/* Colour group picker — reads colour groups from template page's paletteGroup JSON */}
+          {currentPage?.layout_json?.paletteGroup && (
+            <div className="rounded-lg border p-3">
+              <ColourGroupPicker
+                paletteGroup={currentPage.layout_json.paletteGroup}
+                selectedGroupId={draft.paletteId}
+                onSelect={id => setPaletteId(id)}
+              />
+            </div>
+          )}
+
+          {/* Palette selector — fallback when template uses named palettes from DB */}
+          {palettes.length > 0 && !currentPage?.layout_json?.paletteGroup && (
             <div className="rounded-lg border p-3">
               <PaletteSelector
                 palettes={palettes}

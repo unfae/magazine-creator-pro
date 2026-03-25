@@ -355,7 +355,7 @@ function PageMockup({ page, brief, colorDirection }: MockupProps) {
       </div>
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: accent }} />
       {pagination}
-    </div>
+    </div></div>
   );
 }
 
@@ -544,22 +544,22 @@ export default function Foundation() {
 
   if (!brief) {
     return (
-      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center"><div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
         <p className="text-muted-foreground">No brief found. Start from the Brief Builder.</p>
         <Link to="/studio/brief"><Button variant="outline">Go to Brief Builder</Button></Link>
-      </div>
+      </div></div>
     );
   }
 
   const accent = brief.accentColorHint?.match(/#[0-9a-fA-F]{6}/)?.[0] ?? '#C69339';
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10">
+    <div className="min-h-screen bg-background text-foreground"><div className="mx-auto max-w-5xl px-4 py-10">
 
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Studio</p>
+          <p className="text-xs uppercase tracking-widest text-gold mb-1">Studio</p>
           <h1 className="text-2xl font-semibold tracking-tight">Creative Foundation</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{brief.magazineTitle}</p>
         </div>
@@ -591,7 +591,7 @@ export default function Foundation() {
         <div className="flex flex-col items-center justify-center py-24 gap-4">
           <Loader2 className="h-8 w-8 animate-spin" style={{ color: accent }} />
           <p className="text-sm text-muted-foreground">Claude is building your foundation…</p>
-          <p className="text-xs text-muted-foreground">This takes 10–20 seconds for a full magazine</p>
+          <p className="text-xs text-muted-foreground/60">This takes 10–20 seconds for a full magazine</p>
         </div>
       )}
 
@@ -608,7 +608,7 @@ export default function Foundation() {
         <div className="space-y-8">
 
           {/* Overview strip */}
-          <div className="rounded-lg border bg-card p-4">
+          <div className="rounded-xl border border-border bg-card p-4">
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               {[
                 ['Mood', result.overallMood],
