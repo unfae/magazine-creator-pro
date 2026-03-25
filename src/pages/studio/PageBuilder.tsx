@@ -463,7 +463,7 @@ export default function PageBuilder() {
     const n = designElements.length + 1;
     setDesignElements(prev => [...prev, {
       id: `el_${n}`, type: 'line', x: 0, y: 700, width: 1000, height: 2,
-      color: hsl(var(--gold)), opacity: 1, rotate: 0, zIndex: 5,
+      color: '#C69339', opacity: 1, rotate: 0, zIndex: 5,
     }]);
   }
 
