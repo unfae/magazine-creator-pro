@@ -8,7 +8,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 
-
 import TermsPage from "@/pages/TermsPage";
 import PrivacyPage from "@/pages/PrivacyPage";
 import Index from "@/pages/Index";
@@ -26,12 +25,15 @@ import CheckEmailPage from "@/pages/CheckEmailPage";
 import { AuthProvider } from '@/context/AuthContext';
 import PageJsonGenerator from "@/pages/PageJsonGenerator";
 import TemplatePaymentCallbackPage from "@/pages/TemplatePaymentCallbackPage";
+import ResetPasswordPage from "@/pages/ResetPasswordPage";
+import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
+import BriefBuilder from "@/pages/studio/BriefBuilder";
+import Foundation from "@/pages/studio/Foundation";
+import PageBuilder from "@/pages/studio/PageBuilder";
 import FAQsPage from "@/pages/FAQsPage";
 import ContactPage from "@/pages/ContactPage";
 import TemplateRequestPage from "@/pages/TemplateRequestPage";
 import PartnerPage from "@/pages/PartnerPage";
-import ResetPasswordPage from "@/pages/ResetPasswordPage";
-import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 
 const queryClient = new QueryClient();
 
@@ -57,7 +59,6 @@ const App = () => (
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/template-request" element={<TemplateRequestPage />} />
               <Route path="/partner" element={<PartnerPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
               {/* Authenticated */}
               <Route path="/dashboard" element={<DashboardPage />} />
@@ -66,10 +67,15 @@ const App = () => (
               <Route path="/magazines" element={<MagazinesPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/templatepayment/callback" element={<TemplatePaymentCallbackPage />} />
             </Route>
 
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            {/* Studio — internal, unlisted */}
+            <Route path="/studio/brief" element={<BriefBuilder />} />
+            <Route path="/studio/foundation" element={<Foundation />} />
+            <Route path="/studio/page-builder" element={<PageBuilder />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

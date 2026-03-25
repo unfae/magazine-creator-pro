@@ -157,7 +157,7 @@ export default function PageJsonGenerator() {
             />
           </div>
 
-          {/* Texts */}
+          {/* Textss */}
           <div className="space-y-1.5">
             <Label htmlFor="textsRaw">Texts (one per line: id:default text)</Label>
             <Textarea
