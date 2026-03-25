@@ -24,6 +24,8 @@ import html2canvas from 'html2canvas';
 import { logTemplateExport } from '@/lib/exportLog';
 import { useTemplatePalettes, resolvePaletteColor, type TemplatePalette } from '@/hooks/useTemplatePalettes';
 import { useSvgPalette } from '@/hooks/useSvgPalette';
+import { resolveVariance, makeSeedString } from '@/lib/resolveVariance';
+import type { VariadicPageLayout } from '@/lib/variadicTypes';
 import { PaletteSelector } from '@/components/PaletteSelector';
 import { useTemplateVibes, resolveVibeTypography, type TemplateVibe } from '@/hooks/useTemplateVibes';
 import { VibeSelector } from '@/components/VibeSelector';
@@ -50,7 +52,12 @@ type ImageBlock = {
 type TemplatePage = {
   id: string; template_id: string; page_number: number;
   page_image_url?: string;
-  layout_json: { textBlocks?: TextBlock[]; imageBlocks?: ImageBlock[]; };
+  layout_json: {
+    textBlocks?:      TextBlock[];
+    imageBlocks?:     ImageBlock[];
+    designElements?:  any[];        // DesignElement[] from variadicTypes
+    paletteGroup?:    string;
+  };
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -163,6 +170,11 @@ export default function CreateAITemplatePage() {
   const [templateAccessKey, setTemplateAccessKey] = useState(0);
   const [videoAccessKey, setVideoAccessKey] = useState(0);
 
+  // Variance controls
+  const [varyLayout, setVaryLayout]     = useState(false);
+  const [varianceSeed, setVarianceSeed] = useState(0); // increment to re-vary
+  const [userId, setUserId]             = useState<string | null>(null);
+
   // Canvas dimensions (from template or defaults)
   const canvasWidth  = template?.canvas_width  ?? 1000;
   const canvasHeight = template?.canvas_height ?? 1415;
@@ -218,7 +230,10 @@ export default function CreateAITemplatePage() {
 
   // ── Auth check ────────────────────────────────────────────────────────────
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setIsSignedIn(!!data.user));
+    supabase.auth.getUser().then(({ data }) => {
+      setIsSignedIn(!!data.user);
+      setUserId(data.user?.id ?? null);
+    });
   }, []);
 
   // ── Fetch template + pages ────────────────────────────────────────────────
@@ -276,6 +291,27 @@ export default function CreateAITemplatePage() {
       setLoadingPages(false);
     })();
   }, [templateSlug, navigate]);
+
+  // ── Resolved pages — applies variance when varyLayout is on ────────────────
+  const resolvedPages = useMemo(() => {
+    return templatePages.map(pg => {
+      const layout = pg.layout_json as VariadicPageLayout;
+      // Only resolve if the page actually has any variance fields
+      const hasVariance =
+        layout?.textBlocks?.some((tb: any) => tb.xVariance || tb.yVariance || tb.rotateVariance || tb.fontFamilyOptions || tb.colorOptions) ||
+        layout?.imageBlocks?.some((ib: any) => ib.xVariance || ib.yVariance || ib.rotateVariance || ib.maskGroup) ||
+        layout?.designElements?.length;
+
+      if (!hasVariance || (!varyLayout && varianceSeed === 0)) return pg;
+
+      const resolved = resolveVariance(layout, {
+        seedString: makeSeedString(userId ?? 'guest', template?.id ?? '', pg.page_number) + varianceSeed,
+        templateBaseUrl: template?.baseUrl ?? '',
+      });
+
+      return { ...pg, layout_json: resolved };
+    });
+  }, [templatePages, varyLayout, varianceSeed, userId, template?.id]);
 
   // ── Pre-fill texts from profile when draft + profile are both loaded ──────
   useEffect(() => {
@@ -506,7 +542,9 @@ export default function CreateAITemplatePage() {
 
   // ── Render a single page canvas ────────────────────────────────────────────
   function renderPage(pg: TemplatePage) {
-    const { textBlocks = [], imageBlocks = [] } = pg.layout_json ?? {};
+    // Use the resolved version of this page (variance applied if varyLayout is on)
+    const resolvedPg = resolvedPages.find(r => r.page_number === pg.page_number) ?? pg;
+    const { textBlocks = [], imageBlocks = [] } = resolvedPg.layout_json ?? {};
     const editableSlots = imageBlocks.filter(b => b.editable !== false);
 
     return (
@@ -552,6 +590,26 @@ export default function CreateAITemplatePage() {
           );
         })}
 
+        {/* Design elements (lines, shapes, dots) */}
+        {(pg.layout_json?.designElements ?? []).map((el: any) => (
+          <div
+            key={el.id}
+            style={{
+              position:     'absolute',
+              left:         el.x,
+              top:          el.y,
+              width:        el.width,
+              height:       el.height,
+              background:   el.color,
+              opacity:      el.opacity ?? 1,
+              zIndex:       el.zIndex ?? 5,
+              borderRadius: el.borderRadius ? `${el.borderRadius}px` : undefined,
+              transform:    el.rotate ? `rotate(${el.rotate}deg)` : undefined,
+              pointerEvents: 'none',
+            }}
+          />
+        ))}
+
         {/* Text blocks */}
         {textBlocks.map((tb, tIdx) => {
           const value = draft.textValues[tb.id] ?? tb.defaultText ?? '';
@@ -596,12 +654,14 @@ export default function CreateAITemplatePage() {
   }
 
   // ── All text blocks across all pages (for BulkTextEdit) ───────────────────
-  const allTextBlocks = templatePages.flatMap(pg => pg.layout_json?.textBlocks ?? []);
+  // Use resolvedPages for rendering (variance applied)
+  const allTextBlocks = resolvedPages.flatMap(pg => pg.layout_json?.textBlocks ?? []);
   const editableTextBlocks = allTextBlocks.filter(tb => tb.editable !== false);
 
   // ── Current page data ─────────────────────────────────────────────────────
   const currentPage = templatePages[currentPageIndex];
-  const editableImageBlocks = currentPage?.layout_json?.imageBlocks?.filter(b => b.editable !== false) ?? [];
+  const resolvedCurrentPage = resolvedPages[currentPageIndex];
+  const editableImageBlocks = resolvedCurrentPage?.layout_json?.imageBlocks?.filter((b: any) => b.editable !== false) ?? [];
 
   // ── Guard: loading ────────────────────────────────────────────────────────
   if (loadingTemplate) {
@@ -740,13 +800,41 @@ export default function CreateAITemplatePage() {
                 height: canvasHeight * PREVIEW_SCALE,
               }}
             >
-              {renderPage(currentPage)}
+              {renderPage(resolvedCurrentPage ?? currentPage)}
             </div>
           )}
         </div>
 
         {/* ── Side panel ── */}
         <div className="w-full lg:w-72 space-y-4">
+
+          {/* Vary layout controls */}
+          <div className="rounded-lg border p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium">Vary Layout</p>
+                <p className="text-[11px] text-muted-foreground">Randomise positions, fonts and masks</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={varyLayout}
+                onClick={() => setVaryLayout(v => !v)}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${varyLayout ? 'bg-gold' : 'bg-muted'}`}
+              >
+                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${varyLayout ? 'translate-x-4' : 'translate-x-1'}`} />
+              </button>
+            </div>
+            {varyLayout && (
+              <button
+                type="button"
+                onClick={() => setVarianceSeed(s => s + 1)}
+                className="w-full text-xs text-center py-1.5 rounded-md border border-dashed border-gold/40 text-gold hover:bg-gold/5 transition-colors"
+              >
+                ↺ Try another variation
+              </button>
+            )}
+          </div>
 
           {/* Vibe selector */}
           {vibes.length > 0 && (
