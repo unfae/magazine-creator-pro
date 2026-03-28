@@ -123,7 +123,7 @@ function ImageFrame({
         width: block.width, height: block.height,
         zIndex: block.zIndex ?? 1,
         transform: block.rotate ? `rotate(${block.rotate}deg)` : undefined,
-        borderRadius: block.borderRadius ?? 0,
+        borderRadius: typeof block.borderRadius === 'string' ? block.borderRadius : `${block.borderRadius ?? 0}px`,
         overflow: 'hidden',
         cursor: isEditMode ? 'grab' : 'default',
         ...(block.border?.width ? {
@@ -312,8 +312,15 @@ export default function CreateAITemplatePage() {
 
       if (!hasVariance || (!varyLayout && varianceSeed === 0)) return pg;
 
+      // Derive variant index v from seed — same user always gets same variant
+      const seedStr = makeSeedString(userId ?? 'guest', template?.id ?? '', pg.page_number);
+      const seedNum = seedStr.split('').reduce((h, c) => (Math.imul(31, h) + c.charCodeAt(0)) | 0, 0);
+      const totalVariants = (layout as any)._variants ?? 2;
+      const v = (Math.abs(seedNum) + varianceSeed) % totalVariants;
+
       const resolved = resolveVariance(layout, {
-        seedString: makeSeedString(userId ?? 'guest', template?.id ?? '', pg.page_number) + varianceSeed,
+        v,
+        seedString: seedStr,
         templateBaseUrl: templateBaseUrl,
       });
 
@@ -582,10 +589,12 @@ export default function CreateAITemplatePage() {
           flexShrink: 0,
         }}
       >
-        {/* Background — palette override if set */}
+        {/* Background — resolved layout > palette > white */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: activePalette?.colors.background ?? '#fff',
+          background: (resolvedPg.layout_json as any).background
+            ?? activePalette?.colors.background
+            ?? '#fff',
         }} />
 
         {/* Image blocks */}
@@ -635,39 +644,56 @@ export default function CreateAITemplatePage() {
         {/* Text blocks */}
         {textBlocks.map((tb, tIdx) => {
           const value = draft.textValues[tb.id] ?? tb.defaultText ?? '';
+          const vibeT = resolveVibeTypography(tIdx, activeVibe);
+          const resolvedFontFamily    = vibeT?.fontFamily    ?? (tb as any).fontFamily;
+          const resolvedFontWeight    = vibeT?.fontWeight    ?? (tb as any).fontWeight;
+          const resolvedFontSize      = vibeT?.fontSize      ?? (tb as any).fontSize;
+          const resolvedLetterSpacing = vibeT?.letterSpacing ?? ((tb as any).letterSpacing ? String((tb as any).letterSpacing) : undefined);
+          const resolvedLineHeight    = vibeT?.lineHeight    ?? ((tb as any).lineHeight    ? String((tb as any).lineHeight)    : undefined);
+          const resolvedColor =
+            resolvePaletteColor((tb as any).paletteRole, activePalette) ??
+            vibeT?.color ?? (tb as any).color ?? '#000';
+          const fill   = (tb as any).fill;
+          const shadow = (tb as any).shadow;
+          const textType = (tb as any).type ?? 'optional';
+
           return (
             <div
               key={tb.id}
-              style={(() => {
-                // Merge: base block styles < vibe typography < palette colour
-                const vibeT = resolveVibeTypography(tIdx, activeVibe);
-                const resolvedFontFamily    = vibeT?.fontFamily    ?? tb.fontFamily;
-                const resolvedFontWeight    = vibeT?.fontWeight    ?? tb.fontWeight;
-                const resolvedFontSize      = vibeT?.fontSize      ?? tb.fontSize;
-                const resolvedLetterSpacing = vibeT?.letterSpacing ?? (tb.letterSpacing ? String(tb.letterSpacing) : undefined);
-                const resolvedLineHeight    = vibeT?.lineHeight    ?? (tb.lineHeight    ? String(tb.lineHeight)    : undefined);
-                const resolvedColor =
-                  resolvePaletteColor(tb.paletteRole, activePalette) ??
-                  vibeT?.color ??
-                  tb.color ?? '#000';
-                return {
+              style={{
                 position: 'absolute',
                 left: tb.x, top: tb.y,
                 width: tb.width, height: tb.height,
+                zIndex: (tb as any).zIndex ?? 10,
+                transform: (tb as any).rotate ? `rotate(${(tb as any).rotate}deg)` : undefined,
+              }}
+            >
+              {/* Fill background shape */}
+              {fill && (
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  background: fill.color ?? 'rgba(0,0,0,0.5)',
+                  borderRadius: fill.borderRadius ? `${fill.borderRadius}px` : undefined,
+                  margin: fill.padding ? `-${fill.padding}px` : undefined,
+                  boxShadow: shadow ?? undefined,
+                }} />
+              )}
+              {/* Text content */}
+              <div style={{
+                position: 'relative',
                 fontSize: resolvedFontSize, fontFamily: resolvedFontFamily,
                 fontWeight: resolvedFontWeight as any,
                 lineHeight: resolvedLineHeight ? `${resolvedLineHeight}px` : undefined,
                 letterSpacing: resolvedLetterSpacing ? `${resolvedLetterSpacing}px` : undefined,
                 color: resolvedColor,
-                textAlign: (tb.align ?? 'left') as any,
+                textAlign: ((tb as any).align ?? 'left') as any,
                 whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                 overflow: 'hidden',
-                zIndex: tb.zIndex ?? 10,
-                transform: tb.rotate ? `rotate(${tb.rotate}deg)` : undefined,
-                };
-              })()}
-            >
-              {value}
+                padding: fill?.padding ? `${fill.padding}px` : undefined,
+                boxShadow: !fill && shadow ? shadow : undefined,
+              }}>
+                {value}
+              </div>
             </div>
           );
         })}
@@ -958,11 +984,19 @@ export default function CreateAITemplatePage() {
           )}
 
           {/* Per-field text editing for current page */}
-          {currentPage?.layout_json?.textBlocks?.filter(tb => tb.editable !== false).map(tb => (
+          {currentPage?.layout_json?.textBlocks?.filter((tb: any) => tb.editable !== false).map((tb: any) => {
+            const textType = tb.type ?? 'optional';
+            const isRequired = textType === 'required';
+            const isAI = textType === 'ai';
+            return (
             <div key={tb.id} className="space-y-1">
-              <label className="text-xs text-muted-foreground capitalize">
-                {tb.id.replace(/_/g, ' ')}
-              </label>
+              <div className="flex items-center gap-1.5">
+                <label className={`text-xs capitalize ${isRequired ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                  {tb.id.replace(/_/g, ' ')}
+                </label>
+                {isRequired && <span className="text-[9px] text-gold uppercase tracking-wide">required</span>}
+                {isAI && <span className="text-[9px] text-blue-400 uppercase tracking-wide">ai</span>}
+              </div>
               {(tb.defaultText?.length ?? 0) >= 60 ? (
                 <textarea
                   rows={2}
@@ -977,11 +1011,11 @@ export default function CreateAITemplatePage() {
                   value={draft.textValues[tb.id] ?? ''}
                   onChange={e => setOneText(tb.id, e.target.value)}
                   placeholder={`Type ${tb.id}${tb.defaultText ? ` (e.g. ${tb.defaultText})` : ''}`}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className={`w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isRequired ? 'ring-1 ring-gold/30' : ''}`}
                 />
               )}
             </div>
-          ))}
+          );})}
 
         </div>
       </div>
