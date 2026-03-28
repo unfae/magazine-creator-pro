@@ -3,7 +3,7 @@
 // Works as a fully functional editor even without AI features enabled.
 // AI features (text generation, bg removal, vibes) layer on top progressively.
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
