@@ -179,6 +179,14 @@ export default function CreateAITemplatePage() {
   const canvasWidth  = template?.canvas_width  ?? 1000;
   const canvasHeight = template?.canvas_height ?? 1415;
 
+  // Derive base URL from the first page's first image block URL
+  // e.g. ".../template_pages/personalstyle/1A.png" → ".../template_pages/personalstyle"
+  const templateBaseUrl = useMemo(() => {
+    const firstUrl = templatePages[0]?.layout_json?.imageBlocks?.[0]?.defaultImageUrl ?? '';
+    if (!firstUrl) return '';
+    return firstUrl.substring(0, firstUrl.lastIndexOf('/'));
+  }, [templatePages]);
+
   // Auth + access
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [discountedToFree, setDiscountedToFree] = useState(false);
@@ -306,7 +314,7 @@ export default function CreateAITemplatePage() {
 
       const resolved = resolveVariance(layout, {
         seedString: makeSeedString(userId ?? 'guest', template?.id ?? '', pg.page_number) + varianceSeed,
-        templateBaseUrl: template?.baseUrl ?? '',
+        templateBaseUrl: templateBaseUrl,
       });
 
       return { ...pg, layout_json: resolved };
@@ -541,10 +549,24 @@ export default function CreateAITemplatePage() {
   }
 
   // ── Render a single page canvas ────────────────────────────────────────────
+  // Resolve maskGroup → concrete mask src if mask field is absent.
+  // Uses variant 1 by default (e.g. maskGroup "1A" → "1A1.svg").
+  // This ensures masking works even when varyLayout is off.
+  function resolveBlockMask(block: ImageBlock): ImageBlock {
+    if (block.mask || !(block as any).maskGroup) return block;
+    const group   = (block as any).maskGroup as string;
+    const variant = 1; // default to first variant
+    const src     = `${templateBaseUrl}/masks/${group}${variant}.svg`;
+    return { ...block, mask: { type: 'svg', src } };
+  }
+
   function renderPage(pg: TemplatePage) {
     // Use the resolved version of this page (variance applied if varyLayout is on)
     const resolvedPg = resolvedPages.find(r => r.page_number === pg.page_number) ?? pg;
-    const { textBlocks = [], imageBlocks = [] } = resolvedPg.layout_json ?? {};
+    const rawImageBlocks = resolvedPg.layout_json?.imageBlocks ?? [];
+    const { textBlocks = [] } = resolvedPg.layout_json ?? {};
+    // Resolve maskGroup → mask on every block before rendering
+    const imageBlocks = rawImageBlocks.map(resolveBlockMask);
     const editableSlots = imageBlocks.filter(b => b.editable !== false);
 
     return (
