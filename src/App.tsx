@@ -34,6 +34,7 @@ import FAQsPage from "@/pages/FAQsPage";
 import ContactPage from "@/pages/ContactPage";
 import TemplateRequestPage from "@/pages/TemplateRequestPage";
 import PartnerPage from "@/pages/PartnerPage";
+import CreateEventDPPage from "@/pages/CreateEventDPPage";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +60,10 @@ const App = () => (
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/template-request" element={<TemplateRequestPage />} />
               <Route path="/partner" element={<PartnerPage />} />
+                
+                {/* Event DP — no auth required */}
+              <Route path="/event/:templateSlug" element={<CreateEventDPPage />} />
+
 
               {/* Authenticated */}
               <Route path="/dashboard" element={<DashboardPage />} />
