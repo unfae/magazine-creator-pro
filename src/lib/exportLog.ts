@@ -81,6 +81,39 @@ export async function logTemplateExport(params: {
     .eq('id', payment.id);
 }
 
+// ── DP export logger — writes to dp_exports table, not template_exports ────────
+// Fully independent. Works for guests (no auth) and signed-in users.
+
+export async function logDpExport(params: {
+  templateId?:      string | null;
+  templateName?:    string | null;
+  templateSlug?:    string | null;
+  exportType:       'pdf' | 'images';
+  pageCount?:       number;
+  guestFingerprint: string;        // always provided — see getGuestFingerprint()
+  meta?:            Record<string, any>;
+}) {
+  // Check if there's a signed-in user (optional — guests are fine without)
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { error } = await supabase.from('dp_exports').insert([{
+    template_id:       params.templateId    ?? null,
+    template_name:     params.templateName  ?? null,
+    template_slug:     params.templateSlug  ?? null,
+    export_type:       params.exportType,
+    page_count:        params.pageCount     ?? null,
+    user_id:           user?.id             ?? null,
+    user_email:        user?.email          ?? null,
+    is_guest:          !user,
+    guest_fingerprint: params.guestFingerprint,
+    meta:              params.meta          ?? {},
+  }]);
+
+  if (error) {
+    console.error('Failed to log DP export:', error);
+  }
+}
+
 // ── Guest fingerprint ─────────────────────────────────────────────────────────
 // Generates or retrieves a random session ID stored in sessionStorage.
 // Lets you see unique guest downloads in analytics without persistent tracking.

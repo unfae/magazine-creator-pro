@@ -18,7 +18,7 @@ import { supabase } from '@/lib/supabase';
 import { getAllowedFontsCached, ensureGoogleFontsLoaded } from '@/lib/fontLoader';
 import { BulkTextEdit } from '@/components/BulkTextEdit';
 import html2canvas from 'html2canvas';
-import { logTemplateExport, getGuestFingerprint } from '@/lib/exportLog';
+import { logDpExport, getGuestFingerprint } from '@/lib/exportLog';
 
 // ── Types (same as CreateMagazinePage) ────────────────────────────────────────
 
@@ -56,6 +56,8 @@ const PAGE_HEIGHT   = 1415;
 async function pageToCanvas(pageEl: HTMLElement): Promise<HTMLCanvasElement> {
   const clone = pageEl.cloneNode(true) as HTMLElement;
 
+  // Fix image slots — move <img> src to backgroundImage so html2canvas
+  // captures them correctly (avoids CORS taint on some browsers)
   clone.querySelectorAll('[data-image-slot="true"]').forEach(slotEl => {
     const slot = slotEl as HTMLElement;
     const img  = slot.querySelector('img') as HTMLImageElement | null;
@@ -67,25 +69,39 @@ async function pageToCanvas(pageEl: HTMLElement): Promise<HTMLCanvasElement> {
     img.style.display = 'none';
   });
 
+  // Remove UI chrome (replace buttons, etc.)
   clone.querySelectorAll('[data-ui="true"]').forEach(el => el.remove());
 
+  // Fix text overflow for export
   clone.querySelectorAll('[data-text-block="true"]').forEach(el => {
     const t = el as HTMLElement;
-    t.style.overflow    = 'visible';
-    t.style.boxSizing   = 'border-box';
+    t.style.overflow      = 'visible';
+    t.style.boxSizing     = 'border-box';
     t.style.paddingBottom = '3px';
   });
 
-  clone.style.cssText = `
-    width: ${PAGE_WIDTH}px; height: ${PAGE_HEIGHT}px;
-    transform: none; position: absolute;
-    left: -99999px; top: 0; z-index: -1;
-  `;
+  // IMPORTANT: set position/transform properties individually so we
+  // do NOT wipe the existing backgroundImage set on the page div above.
+  clone.style.width           = `${PAGE_WIDTH}px`;
+  clone.style.height          = `${PAGE_HEIGHT}px`;
+  clone.style.transform       = 'none';
+  clone.style.transformOrigin = 'top left';
+  clone.style.position        = 'absolute';
+  clone.style.left            = '-99999px';
+  clone.style.top             = '0';
+  clone.style.zIndex          = '-1';
+
   document.body.appendChild(clone);
   await document.fonts.ready;
 
   const canvas = await html2canvas(clone, {
-    scale: 1, useCORS: true, backgroundColor: '#ffffff', imageTimeout: 30000,
+    scale:           1,
+    useCORS:         true,
+    allowTaint:      true,   // allow cross-origin images (template BG is from Supabase)
+    backgroundColor: '#ffffff',
+    imageTimeout:    30000,
+    width:           PAGE_WIDTH,
+    height:          PAGE_HEIGHT,
   });
   document.body.removeChild(clone);
   return canvas;
@@ -295,20 +311,16 @@ export default function CreateEventDPPage() {
       pdf.save(`${safe(template?.name ?? 'event-dp')}.pdf`);
       toast.success('PDF downloaded!', { id: toastId });
 
-      // Log DP export (non-fatal, guest-friendly)
+      // Log DP export — separate table, works for guests
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        await logTemplateExport({
-          userId:           user?.id ?? null,
-          userEmail:        user?.email ?? null,
+        await logDpExport({
           templateId:       template?.id,
           templateName:     template?.name,
+          templateSlug:     template?.slug,
           exportType:       'pdf',
           pageCount:        templatePages.length,
-          source:           'dp',
-          isGuest:          !user,
-          guestFingerprint: user ? null : getGuestFingerprint(),
-          meta:             { templateSlug: template?.slug, pages: templatePages.length },
+          guestFingerprint: getGuestFingerprint(),
+          meta:             { pages: templatePages.length },
         });
       } catch { /* never block download */ }
     } catch (e) {
@@ -323,29 +335,25 @@ export default function CreateEventDPPage() {
   async function handleDownloadPage(pg: TemplatePage) {
     const el = document.getElementById(`dp-page-${pg.page_number}`);
     if (!el) return;
-    const toastId = toast.loading(`Saving page ${pg.page_number}…`);
+    const toastId = toast.loading(`Preparing page ${pg.page_number}…`);
     try {
       const canvas = await pageToCanvas(el);
       const link   = document.createElement('a');
       link.href     = canvas.toDataURL('image/jpeg', 0.95);
       link.download = `${template?.name ?? 'dp'}-page-${pg.page_number}.jpg`;
       link.click();
-      toast.success('Image saved!', { id: toastId });
+      toast.success('Downloaded!', { id: toastId });
 
-      // Log DP image export
+      // Log DP image export — separate table, works for guests
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        await logTemplateExport({
-          userId:           user?.id ?? null,
-          userEmail:        user?.email ?? null,
+        await logDpExport({
           templateId:       template?.id,
           templateName:     template?.name,
+          templateSlug:     template?.slug,
           exportType:       'images',
           pageCount:        1,
-          source:           'dp',
-          isGuest:          !user,
-          guestFingerprint: user ? null : getGuestFingerprint(),
-          meta:             { templateSlug: template?.slug, page: pg.page_number },
+          guestFingerprint: getGuestFingerprint(),
+          meta:             { page: pg.page_number },
         });
       } catch { /* never block download */ }
     } catch (e) {
@@ -408,8 +416,8 @@ export default function CreateEventDPPage() {
       <div className="mb-6">
         <h1 className="text-editorial-md mb-1">{template.name}</h1>
         {template.description && <p className="text-muted-foreground text-sm">{template.description}</p>}
-        <p className="text-xs text-muted-foreground mt-2">
-          No sign-in needed — upload your photo, customise, and download instantly.
+        <p className="text-sm text-muted-foreground mt-2">
+          Tap an image slot to upload your photo, personalise the text, and download your DP — no account needed.
         </p>
       </div>
 
@@ -572,7 +580,7 @@ export default function CreateEventDPPage() {
                       className="w-full flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-md py-1.5 transition-colors disabled:opacity-40"
                     >
                       <ImageDown className="h-3.5 w-3.5" />
-                      Save page {pg.page_number}
+                      Download page {pg.page_number}
                     </button>
                   </div>
                 );
@@ -659,8 +667,8 @@ export default function CreateEventDPPage() {
 
       {/* Download bar */}
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-muted-foreground">
-          Your photos never leave your device — no account needed.
+        <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
+          Tap any image slot on the preview to upload your own photo, then hit <strong>Download</strong> when you're ready.
         </p>
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">Download as:</span>
@@ -675,7 +683,7 @@ export default function CreateEventDPPage() {
             <Button variant="outline" size="sm"
               onClick={() => currentPage && handleDownloadPage(currentPage)}
               disabled={isExporting}>
-              <ImageDown className="h-3.5 w-3.5 mr-1.5" /> Image
+              <ImageDown className="h-3.5 w-3.5 mr-1.5" /> Download
             </Button>
           )}
         </div>
