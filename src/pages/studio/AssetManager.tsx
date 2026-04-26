@@ -307,6 +307,7 @@ export default function AssetManager() {
     toast.success(`${files.length} file${files.length !== 1 ? 's' : ''} added as rows`);
   }
 
+  const readyCount = rows.filter(r => r.file && r.name.trim() && r.status !== 'done').length;
   const doneCount  = rows.filter(r => r.status === 'done').length;
 
   return (
