@@ -117,7 +117,14 @@ function FileCell({ row, onChange }: { row: AssetRow; onChange: (r: AssetRow) =>
     const url = URL.createObjectURL(f);
     // Auto-fill name from filename if empty
     const baseName = f.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
-    onChange({ ...row, file: f, previewUrl: url, name: row.name || baseName });
+    // Extract filename words as tags (split on separators, lowercase, dedupe)
+    const filenameTags = baseName
+      .toLowerCase()
+      .split(/[\s_\-\.]+/)
+      .map(w => w.trim())
+      .filter(w => w.length > 2 && !row.tags.includes(w));
+    const mergedTags = [...new Set([...row.tags, ...filenameTags])];
+    onChange({ ...row, file: f, previewUrl: url, name: row.name || baseName, tags: mergedTags });
     e.target.value = '';
   }
 
@@ -168,7 +175,10 @@ function TypeCell({ value, onChange }: { value: AssetType; onChange: (v: AssetTy
 
 export default function AssetManager() {
   const [rows,    setRows]    = useState<AssetRow[]>([newRow(), newRow(), newRow()]);
-  const [saving,  setSaving]  = useState(false);
+  const [saving,       setSaving]       = useState(false);
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [isDragging,     setIsDragging]     = useState(false);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
 
   function updateRow(id: string, updates: Partial<AssetRow>) {
     setRows(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
@@ -255,12 +265,74 @@ export default function AssetManager() {
     if (errorCount)   toast.error(`${errorCount} failed — check console`);
   }
 
-  const readyCount = rows.filter(r => r.file && r.name.trim() && r.status !== 'done').length;
+  // ── Drag and drop ────────────────────────────────────────────────────────────
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault(); setIsDragging(true);
+  }
+  function handleDragLeave(e: React.DragEvent) {
+    if (!dropZoneRef.current?.contains(e.relatedTarget as Node)) setIsDragging(false);
+  }
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault(); setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    if (!files.length) return;
+
+    const lastType = rows[rows.length - 1]?.type ?? 'model_photo';
+    const newRows: AssetRow[] = files.map(f => {
+      const url       = URL.createObjectURL(f);
+      const baseName  = f.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+      const filenameTags = baseName
+        .toLowerCase()
+        .split(/[\s_\-\.]+/)
+        .map(w => w.trim())
+        .filter(w => w.length > 2);
+      return {
+        ...newRow(lastType),
+        file: f, previewUrl: url,
+        name: baseName,
+        tags: [...new Set(filenameTags)],
+      };
+    });
+
+    // Replace any trailing empty rows first, then append
+    setRows(prev => {
+      const nonEmpty = prev.filter(r => r.file || r.name.trim());
+      const empties  = prev.filter(r => !r.file && !r.name.trim());
+      // Fill empty rows first
+      const filled = [...newRows];
+      const remaining = empties.slice(filled.length);
+      return [...nonEmpty, ...empties.slice(0, filled.length).map((_, i) => filled[i]), ...newRows.slice(empties.length), ...remaining];
+    });
+
+    toast.success(`${files.length} file${files.length !== 1 ? 's' : ''} added as rows`);
+  }
+
   const doneCount  = rows.filter(r => r.status === 'done').length;
 
   return (
     <div className="min-h-screen bg-background text-foreground dark">
       <div className="mx-auto max-w-7xl px-4 py-8">
+
+        {/* Clear confirmation modal */}
+        {showClearModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={e => { if (e.target === e.currentTarget) setShowClearModal(false); }}>
+            <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 space-y-4">
+              <h3 className="font-semibold text-sm">Clear all rows?</h3>
+              <p className="text-xs text-muted-foreground">This will remove all unsaved rows. Rows already saved to the database will not be affected.</p>
+              <div className="flex gap-2 justify-end">
+                <button type="button" onClick={() => setShowClearModal(false)}
+                  className="px-4 py-2 text-xs rounded-lg border border-border hover:bg-muted transition-colors">
+                  Cancel
+                </button>
+                <button type="button" onClick={() => { setRows([newRow(), newRow(), newRow()]); setShowClearModal(false); }}
+                  className="px-4 py-2 text-xs rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors">
+                  Clear all
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Header */}
         <div className="mb-6 flex items-end justify-between gap-4">
@@ -273,6 +345,10 @@ export default function AssetManager() {
             </p>
           </div>
           <div className="flex gap-2">
+            <button type="button" onClick={() => setShowClearModal(true)}
+              className="px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-destructive hover:border-destructive/40 transition-colors">
+              Clear all
+            </button>
             <a href="/studio/elements"
               className="px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground transition-colors">
               Elements Bank →
@@ -285,10 +361,22 @@ export default function AssetManager() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
+        {/* Table — also a drop zone */}
+        <div
+          ref={dropZoneRef}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`relative rounded-xl border bg-card overflow-hidden transition-colors ${
+            isDragging ? 'border-gold ring-2 ring-gold/20' : 'border-border'
+          }`}>
+          {isDragging && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-gold/5 pointer-events-none">
+              <p className="text-gold font-semibold text-sm">Drop images to add rows</p>
+            </div>
+          )}
           {/* Column headers */}
-          <div className="grid grid-cols-[36px_120px_1fr_280px_80px_36px] gap-2 px-3 py-2 bg-muted/50 border-b border-border text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className="grid grid-cols-[36px_110px_140px_1fr_80px_52px] gap-2 px-3 py-2 bg-muted/50 border-b border-border text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
             <div />
             <div>Type</div>
             <div>Name</div>
@@ -301,7 +389,7 @@ export default function AssetManager() {
           <div className="divide-y divide-border">
             {rows.map((row, idx) => (
               <div key={row.id}
-                className={`grid grid-cols-[36px_120px_1fr_280px_80px_36px] gap-2 px-3 py-2 items-center transition-colors ${
+                className={`grid grid-cols-[36px_110px_140px_1fr_80px_52px] gap-2 px-3 py-2 items-center transition-colors ${
                   row.status === 'done'  ? 'bg-green-500/5' :
                   row.status === 'error' ? 'bg-destructive/5' : 'hover:bg-muted/30'
                 }`}>
@@ -333,13 +421,14 @@ export default function AssetManager() {
                 <FileCell row={row}
                   onChange={updated => updateRow(row.id, { file: updated.file, previewUrl: updated.previewUrl, name: updated.name || row.name })} />
 
-                {/* Actions */}
-                <div className="flex flex-col gap-0.5">
+                {/* Actions — duplicate then delete */}
+                <div className="flex items-center gap-2">
                   <button type="button" onClick={() => duplicateRow(row.id)}
                     title="Duplicate row"
-                    className="text-[9px] text-muted-foreground/50 hover:text-gold transition-colors leading-none">
+                    className="text-muted-foreground/50 hover:text-gold transition-colors text-sm leading-none select-none">
                     ⧉
                   </button>
+                  <div className="w-px h-3 bg-border" />
                   <button type="button" onClick={() => removeRow(row.id)}
                     title="Remove row"
                     className="text-muted-foreground/40 hover:text-destructive transition-colors">
@@ -357,10 +446,11 @@ export default function AssetManager() {
               <Plus className="h-3.5 w-3.5" /> Add row
             </button>
           </div>
-        </div>
+        </div></div>
 
         {/* Keyboard hints */}
         <div className="mt-3 flex flex-wrap gap-4 text-[11px] text-muted-foreground/60">
+          <span>Drag &amp; drop images anywhere on the table to auto-create rows</span>
           <span><kbd className="font-mono bg-muted px-1 rounded">Enter</kbd> or <kbd className="font-mono bg-muted px-1 rounded">,</kbd> to add a tag</span>
           <span><kbd className="font-mono bg-muted px-1 rounded">Backspace</kbd> to remove last tag</span>
           <span>Paste comma-separated tags to fill all at once</span>
