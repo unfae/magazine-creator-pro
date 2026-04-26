@@ -95,7 +95,7 @@ Make every page title and direction feel specific to this magazine — not gener
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-opus-4-5-20251001", // Use Opus for creative quality
+        model: "claude-opus-4-5", // Use Opus for creative quality
         max_tokens: 4096,
         system: systemPrompt,
         messages: [{ role: "user", content: userMessage }],

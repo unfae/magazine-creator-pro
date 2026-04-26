@@ -28,13 +28,14 @@ import TemplatePaymentCallbackPage from "@/pages/TemplatePaymentCallbackPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import BriefBuilder from "@/pages/studio/BriefBuilder";
+import CreateEventDPPage from "@/pages/CreateEventDPPage";
+import GenerateMagazinePage from "@/pages/GenerateMagazinePage";
 import Foundation from "@/pages/studio/Foundation";
 import PageBuilder from "@/pages/studio/PageBuilder";
 import FAQsPage from "@/pages/FAQsPage";
 import ContactPage from "@/pages/ContactPage";
 import TemplateRequestPage from "@/pages/TemplateRequestPage";
 import PartnerPage from "@/pages/PartnerPage";
-import CreateEventDPPage from "@/pages/CreateEventDPPage";
 
 const queryClient = new QueryClient();
 
@@ -60,10 +61,6 @@ const App = () => (
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/template-request" element={<TemplateRequestPage />} />
               <Route path="/partner" element={<PartnerPage />} />
-                
-                {/* Event DP — no auth required */}
-              <Route path="/event/:templateSlug" element={<CreateEventDPPage />} />
-
 
               {/* Authenticated */}
               <Route path="/dashboard" element={<DashboardPage />} />
@@ -77,6 +74,12 @@ const App = () => (
 
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            {/* AI Magazine Generator */}
+            <Route path="/generate" element={<GenerateMagazinePage />} />
+
+            {/* Event DP — no auth required */}
+            <Route path="/event/:templateSlug" element={<CreateEventDPPage />} />
+
             {/* Studio — internal, unlisted */}
             <Route path="/studio/brief" element={<BriefBuilder />} />
             <Route path="/studio/foundation" element={<Foundation />} />

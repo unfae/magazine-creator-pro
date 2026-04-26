@@ -76,7 +76,7 @@ Pick the single best match and return its id.`;
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model: "claude-haiku-4-5",
         max_tokens: 64,   // Only needs to return a tiny JSON object
         system: systemPrompt,
         messages: [{ role: "user", content: userMessage }],
