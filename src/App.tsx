@@ -28,6 +28,8 @@ import TemplatePaymentCallbackPage from "@/pages/TemplatePaymentCallbackPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import BriefBuilder from "@/pages/studio/BriefBuilder";
+import AssetManager from "@/pages/studio/AssetManager";
+import ElementManager from "@/pages/studio/ElementManager";
 import CreateEventDPPage from "@/pages/CreateEventDPPage";
 import GenerateMagazinePage from "@/pages/GenerateMagazinePage";
 import Foundation from "@/pages/studio/Foundation";
@@ -69,20 +71,21 @@ const App = () => (
               <Route path="/magazines" element={<MagazinesPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/generate" element={<GenerateMagazinePage />} />
               <Route path="/templatepayment/callback" element={<TemplatePaymentCallbackPage />} />
             </Route>
 
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             {/* AI Magazine Generator */}
-            
+            <Route path="/generate" element={<GenerateMagazinePage />} />
 
             {/* Event DP — no auth required */}
             <Route path="/event/:templateSlug" element={<CreateEventDPPage />} />
 
             {/* Studio — internal, unlisted */}
             <Route path="/studio/brief" element={<BriefBuilder />} />
+            <Route path="/studio/assets" element={<AssetManager />} />
+            <Route path="/studio/elements" element={<ElementManager />} />
             <Route path="/studio/foundation" element={<Foundation />} />
             <Route path="/studio/page-builder" element={<PageBuilder />} />
             <Route path="*" element={<NotFound />} />

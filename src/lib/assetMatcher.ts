@@ -221,13 +221,13 @@ export async function matchMask(
     // Save to Supabase Storage for reuse (best-effort, non-blocking)
     try {
       const blob = new Blob([svg], { type: 'image/svg+xml' });
-      const path = `iconify-masks/${metaphorKeywords[0]}-${Date.now()}.svg`;
+      const path = `masks/iconify-${metaphorKeywords[0]}-${Date.now()}.svg`;
       const { data: uploaded } = await supabase.storage
-        .from('masks')
+        .from('main-assets')
         .upload(path, blob, { contentType: 'image/svg+xml', upsert: false });
 
       if (uploaded) {
-        const url = supabase.storage.from('masks').getPublicUrl(uploaded.path).data.publicUrl;
+        const url = supabase.storage.from('main-assets').getPublicUrl(uploaded.path).data.publicUrl;
         // Save to bank for next time
         await supabase.from('main_asset_bank').insert({
           type: 'mask', name: metaphorKeywords[0],
