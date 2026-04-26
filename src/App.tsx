@@ -69,13 +69,14 @@ const App = () => (
               <Route path="/magazines" element={<MagazinesPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/generate" element={<GenerateMagazinePage />} />
               <Route path="/templatepayment/callback" element={<TemplatePaymentCallbackPage />} />
             </Route>
 
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             {/* AI Magazine Generator */}
-            <Route path="/generate" element={<GenerateMagazinePage />} />
+            
 
             {/* Event DP — no auth required */}
             <Route path="/event/:templateSlug" element={<CreateEventDPPage />} />
