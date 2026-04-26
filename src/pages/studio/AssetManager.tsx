@@ -446,7 +446,7 @@ export default function AssetManager() {
               <Plus className="h-3.5 w-3.5" /> Add row
             </button>
           </div>
-        </div></div>
+        </div>
 
         {/* Keyboard hints */}
         <div className="mt-3 flex flex-wrap gap-4 text-[11px] text-muted-foreground/60">
