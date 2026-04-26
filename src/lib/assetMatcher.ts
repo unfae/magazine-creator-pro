@@ -215,7 +215,20 @@ export async function matchMask(
     if (data?.url) return data.url;
   } catch { /* fall through */ }
 
-  // 2. Try Iconify
+  // 2. Try any mask from DB (random, for 60% coverage even without metaphor match)
+  try {
+    const { data: anyMask } = await supabase
+      .from('main_asset_bank')
+      .select('url')
+      .eq('type', 'mask')
+      .limit(30);
+
+    if (anyMask?.length) {
+      return anyMask[Math.floor(Math.random() * anyMask.length)].url;
+    }
+  } catch { /* fall through */ }
+
+  // 3. Try Iconify
   const svg = await fetchIconifyMask(metaphorKeywords);
   if (svg) {
     // Save to Supabase Storage for reuse (best-effort, non-blocking)
@@ -245,30 +258,54 @@ export async function matchMask(
 }
 
 // Match a model photo by gender + mood tags
+// Falls back to any photo of the right gender if no specific match found
 export async function matchModelPhoto(
   gender: string,
   imageDescription: string
 ): Promise<string | null> {
   const descLower = imageDescription.toLowerCase();
-  const tags = [gender];
-  if (descLower.includes('full') || descLower.includes('body')) tags.push('full_body');
-  if (descLower.includes('portrait') || descLower.includes('close')) tags.push('portrait');
-  if (descLower.includes('outdoor') || descLower.includes('street')) tags.push('outdoor');
-  if (descLower.includes('studio') || descLower.includes('clean')) tags.push('studio');
-  if (descLower.includes('candid') || descLower.includes('laugh')) tags.push('candid');
-  if (descLower.includes('action') || descLower.includes('walk')) tags.push('action');
+  const specificTags = [gender];
+  if (descLower.includes('full') || descLower.includes('body')) specificTags.push('full_body');
+  if (descLower.includes('portrait') || descLower.includes('close')) specificTags.push('portrait');
+  if (descLower.includes('outdoor') || descLower.includes('street')) specificTags.push('outdoor');
+  if (descLower.includes('studio') || descLower.includes('clean')) specificTags.push('studio');
+  if (descLower.includes('candid') || descLower.includes('laugh')) specificTags.push('candid');
+  if (descLower.includes('action') || descLower.includes('walk')) specificTags.push('action');
 
   try {
-    const { data } = await supabase
+    // Try specific tags first
+    const { data: specific } = await supabase
       .from('main_asset_bank')
       .select('url')
       .eq('type', 'model_photo')
-      .overlaps('tags', tags)
-      .limit(10);
+      .overlaps('tags', specificTags)
+      .limit(20);
 
-    if (data?.length) {
-      // Random pick from matches for variety
-      return data[Math.floor(Math.random() * data.length)].url;
+    if (specific?.length) {
+      return specific[Math.floor(Math.random() * specific.length)].url;
+    }
+
+    // Fallback: any model photo of this gender
+    const { data: anyGender } = await supabase
+      .from('main_asset_bank')
+      .select('url')
+      .eq('type', 'model_photo')
+      .contains('tags', [gender])
+      .limit(20);
+
+    if (anyGender?.length) {
+      return anyGender[Math.floor(Math.random() * anyGender.length)].url;
+    }
+
+    // Last resort: any model photo at all
+    const { data: any } = await supabase
+      .from('main_asset_bank')
+      .select('url')
+      .eq('type', 'model_photo')
+      .limit(20);
+
+    if (any?.length) {
+      return any[Math.floor(Math.random() * any.length)].url;
     }
   } catch { /* fall through */ }
 
