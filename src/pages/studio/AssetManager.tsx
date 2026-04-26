@@ -2,10 +2,10 @@
 // /studio/assets — bulk upload tool for main_asset_bank (model photos, masks, backgrounds, textures)
 // Excel-style: add multiple rows, upload files per row, commit all at once.
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { Plus, Trash2, Upload, Check, Loader2, X, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, Upload, Check, Loader2, X } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -294,14 +294,10 @@ export default function AssetManager() {
       };
     });
 
-    // Replace any trailing empty rows first, then append
+    // Keep non-empty rows, drop empty ones, append new rows
     setRows(prev => {
       const nonEmpty = prev.filter(r => r.file || r.name.trim());
-      const empties  = prev.filter(r => !r.file && !r.name.trim());
-      // Fill empty rows first
-      const filled = [...newRows];
-      const remaining = empties.slice(filled.length);
-      return [...nonEmpty, ...empties.slice(0, filled.length).map((_, i) => filled[i]), ...newRows.slice(empties.length), ...remaining];
+      return [...nonEmpty, ...newRows];
     });
 
     toast.success(`${files.length} file${files.length !== 1 ? 's' : ''} added as rows`);
