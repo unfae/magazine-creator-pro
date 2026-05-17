@@ -73,7 +73,7 @@ export default function CreateMagazinePage() {
   const { templateSlug } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [videoAccessKey, setVideoAccessKey] = useState(0);     // increments to force useVideoAccess re-check
+  const [videoAccessKey, setVideoAccessKey] = useState(0);     // increments to force useVideoAccess re-check...
   const [templateAccessKey, setTemplateAccessKey] = useState(0); // increments to force useTemplateAccess re-check
   const [magazineId, setMagazineId] = useState<string | null>(null); // set when editing an existing draft
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
