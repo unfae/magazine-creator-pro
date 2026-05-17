@@ -1,0 +1,127 @@
+'use client';
+
+import { useState, useEffect, useMemo } from 'react';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
+import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
+import { Search, ArrowRight } from 'lucide-react';
+
+interface Faq {
+  id: number;
+  question: string;
+  answer: string;
+  is_featured: boolean;
+  is_active: boolean;
+}
+
+export default function FAQsPage() {
+  const [faqs, setFaqs] = useState<Faq[]>([]);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFaqs = async () => {
+      const { data, error } = await supabase
+        .from('faqs')
+        .select('*')
+        .eq('is_active', true)
+        .order('is_featured', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      if (!error && data) setFaqs(data);
+      setLoading(false);
+    };
+
+    fetchFaqs();
+  }, []);
+
+  const triggerSearch = () => setSearch(searchInput.trim().toLowerCase());
+
+  const normalizedSearch = search.trim().toLowerCase();
+
+  const filteredFaqs = useMemo(() => {
+    if (!normalizedSearch) return faqs;
+    return faqs.filter((f) => {
+      const question = f.question?.toLowerCase() || '';
+      const answer = f.answer?.toLowerCase() || '';
+      return question.includes(normalizedSearch) || answer.includes(normalizedSearch);
+    });
+  }, [faqs, normalizedSearch]);
+
+  const hasSearchResults = !loading && normalizedSearch && filteredFaqs.length === 0;
+
+  return (
+    <div className="py-20">
+      <div className="container mx-auto px-4 max-w-4xl">
+        <div className="text-center mb-12">
+          <h1 className="text-2xl sm:text-3xl font-serif font-medium text-foreground mb-3">
+            Frequently Asked Questions
+          </h1>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Have questions about MagznMaker, templates, or how to create your magazine? We've got answers.
+          </p>
+        </div>
+
+        {/* Search bar */}
+        <div className="mb-10">
+          <div className="relative max-w-lg mx-auto">
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && triggerSearch()}
+              placeholder="Search all FAQs..."
+              className="w-full rounded-lg border border-input bg-background pl-4 pr-10 py-2 text-sm shadow-sm 
+                         placeholder:text-muted-foreground/80 
+                         focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+            />
+          
+            <button
+              onClick={triggerSearch}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {searchInput ? (
+                <span className="flex items-center justify-center w-6 h-6 rounded-md border border-current">
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </span>
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Loading FAQs...</p>
+          </div>
+        ) : hasSearchResults ? (
+          <div className="text-center py-10">
+            <p className="text-muted-foreground">No FAQs match your search.</p>
+          </div>
+        ) : (
+          <Accordion type="single" collapsible className="flex flex-col gap-4">
+            {filteredFaqs.map((faq) => (
+              <AccordionItem key={faq.id} value={`faq-${faq.id}`}>
+                <AccordionTrigger
+                  className={cn(
+                    'text-left text-base font-medium',
+                    faq.is_featured && 'text-primary'
+                  )}
+                >
+                  {faq.question}
+                </AccordionTrigger>
+                <AccordionContent>
+                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                    {faq.answer}
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        )}
+      </div>
+    </div>
+  );
+}

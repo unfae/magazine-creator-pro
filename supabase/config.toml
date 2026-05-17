@@ -1,0 +1,7 @@
+# Ensure JWT is NOT checked at the gateway for init-paystack
+[functions.init-paystack]
+verify_jwt = false
+
+# Optional: same for verify-paystack if you ever need it
+[functions.verify-paystack]
+verify_jwt = false

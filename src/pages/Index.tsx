@@ -4,27 +4,42 @@ import { ArrowRight, BookOpen, Sparkles, Image } from 'lucide-react';
 import { TemplateCard } from '@/components/templates/TemplateCard';
 import { getFeaturedTemplates } from '@/data/featured_templates';
 import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom'
-import { useAuth } from '@/context/AuthContext'
-
-
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import { TipsSection } from '@/components/TipsSection';
+import { FAQSection } from '@/components/FAQSection';
+import { supabase } from '@/lib/supabase';
+import { CTASection } from '@/components/CTASection';
 
 export default function Index() {
-  
-  const { user, loading } = useAuth()
-
-  if (loading) return null
-
-  if (user) {
-    return <Navigate to="/dashboard" replace />
-  }
+  const { user, loading } = useAuth();
 
   const [featuredTemplates, setFeaturedTemplates] = useState([]);
+  const [usageCounts, setUsageCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    getFeaturedTemplates(3).then(setFeaturedTemplates);
+    const load = async () => {
+      const templates = await getFeaturedTemplates(3);
+      setFeaturedTemplates(templates);
+
+      const { data: exportData } = await supabase
+        .from('template_usage_counts')
+        .select('template_id, usage_count');
+
+      if (exportData) {
+        const counts: Record<string, number> = {};
+        exportData.forEach(({ template_id, usage_count }: { template_id: string; usage_count: number }) => {
+          if (template_id) counts[template_id] = usage_count;
+        });
+        setUsageCounts(counts);
+      }
+    };
+
+    load();
   }, []);
 
+  if (loading) return null;
+  if (user) return <Navigate to="/dashboard" replace />;
 
   return (
     <div className="min-h-screen bg-background">
@@ -57,14 +72,14 @@ export default function Index() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/auth">
-                <Button variant="elegant" size="xl">
+              <Link to="/auth?mode=signup">
+                <Button variant="elegant" size="lg" className="w-full sm:w-56">
                   Get Started Free
                   <ArrowRight className="h-5 w-5 ml-2" />
                 </Button>
               </Link>
-              <Link to="/auth">
-                <Button variant="outline" size="xl">
+              <Link to="/auth?mode=login">
+                <Button variant="outline" size="lg" className="w-full sm:w-56">
                   Sign In
                 </Button>
               </Link>
@@ -117,7 +132,7 @@ export default function Index() {
         </div>
       </section>
 
-      {/* ⭐ Featured Templates */}
+      {/* Featured Templates */}
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between mb-6">
@@ -137,11 +152,23 @@ export default function Index() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
             {featuredTemplates.map((template) => (
-              <TemplateCard key={template.id} template={template} />
+              <TemplateCard
+                key={template.id}
+                template={template}
+                usageCount={usageCounts[template.id] || 0}
+              />
             ))}
           </div>
         </div>
       </section>
+
+      <TipsSection />
+
+      <CTASection />
+
+      <div className="mt-2">
+        <FAQSection />
+      </div>
 
       {/* CTA */}
       <section className="py-20">

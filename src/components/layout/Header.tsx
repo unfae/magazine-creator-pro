@@ -1,21 +1,23 @@
-import { Link, useLocation } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Menu, X, User, BookOpen, Settings } from "lucide-react";
-import { useState } from "react";
-import { cn } from "@/lib/utils";
-import { useAuth } from "@/context/AuthContext";
+import { Link, useLocation } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Menu, X } from 'lucide-react';
+import { useState } from 'react';
+import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
 
 const authNav = [
-  { label: "Templates", href: "/templates", icon: BookOpen },
-  { label: "My Magazines", href: "/magazines", icon: BookOpen },
-  { label: "Profile", href: "/profile", icon: User },
-  { label: "Settings", href: "/settings", icon: Settings },
+  { label: 'Templates', href: '/templates' },
+  { label: 'My Magazines', href: '/magazines' },
+  { label: 'Profile', href: '/profile' },
+  { label: 'Settings', href: '/settings' },
+  { label: 'FAQs', href: '/faqs' },
 ];
 
 const publicNav = [
-  { label: "Templates", href: "/templates" },
-  { label: "Terms", href: "/terms" },
-  { label: "Privacy", href: "/privacy" },
+  { label: 'Templates', href: '/templates' },
+  { label: 'Terms', href: '/terms' },
+  { label: 'Privacy', href: '/privacy' },
+  { label: 'FAQs', href: '/faqs' },
 ];
 
 export function Header() {
@@ -32,7 +34,7 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link
-          to={isAuthenticated ? "/dashboard" : "/"}
+          to={isAuthenticated ? '/dashboard' : '/'}
           className="font-serif text-2xl font-semibold"
         >
           Magzine<span className="text-gold">Maker</span>
@@ -45,10 +47,10 @@ export function Header() {
               key={item.href}
               to={item.href}
               className={cn(
-                "px-4 py-2 text-sm rounded-md transition-colors",
+                'px-4 py-2 text-sm rounded-md transition-colors',
                 location.pathname === item.href
-                  ? "bg-secondary text-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  ? 'bg-secondary text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
               )}
             >
               {item.label}
@@ -64,12 +66,12 @@ export function Header() {
             </Link>
           ) : (
             <>
-              <Link to="/auth">
+              <Link to="/auth?mode=login">
                 <Button variant="ghost" size="sm">
                   Sign In
                 </Button>
               </Link>
-              <Link to="/auth">
+              <Link to="/auth?mode=signup">
                 <Button size="sm">Get Started</Button>
               </Link>
             </>
@@ -96,10 +98,10 @@ export function Header() {
                 to={item.href}
                 onClick={() => setIsMenuOpen(false)}
                 className={cn(
-                  "block px-4 py-2 rounded-md transition-colors",
+                  'block px-4 py-2 rounded-md transition-colors',
                   location.pathname === item.href
-                    ? "bg-secondary text-foreground"
-                    : "hover:bg-secondary/50"
+                    ? 'bg-secondary text-foreground'
+                    : 'hover:bg-secondary/50'
                 )}
               >
                 {item.label}
