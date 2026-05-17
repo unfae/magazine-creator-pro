@@ -108,10 +108,25 @@ export default function CreateMagazinePage() {
   const [userTexts, setUserTexts] = useState<Record<number, Record<string, string>>>({});
   const [bulkTextValues, setBulkTextValues] = useState<Record<string, string>>({});
 
-  type ImageTransform = { scale: number; rotate: number };
+  type ImageTransform = { scale: number; rotate: number; x: number; y: number };
   const [imageTransforms, setImageTransforms] = useState<Record<number, Record<string, ImageTransform>>>({});
+  // selectedImageSlot: slot whose toolbar is showing (set by long-press)
   const [selectedImageSlot, setSelectedImageSlot] = useState<{ pageNumber: number; slotId: string } | null>(null);
   const [isEditorReady, setIsEditorReady] = useState(false);
+
+  // Gesture state ref — tracks long-press timer and active touch points
+  const activeGestureRef = useRef<{
+    pageNumber: number;
+    slotId: string;
+    longPressTimer: ReturnType<typeof setTimeout> | null;
+    pointers: Map<number, { x: number; y: number }>;
+    startTransform: ImageTransform;
+    startPointerX: number;
+    startPointerY: number;
+    startDistance: number;
+    startAngle: number;
+    hasMoved: boolean;
+  } | null>(null);
 
   // Discount code state for the paywall UI
   const [discountCode, setDiscountCode] = useState('');
@@ -762,11 +777,12 @@ export default function CreateMagazinePage() {
   };
 
   const getImageTransform = (pageNumber: number, slotId: string): ImageTransform =>
-    imageTransforms[pageNumber]?.[slotId] ?? { scale: 1, rotate: 0 };
+    imageTransforms[pageNumber]?.[slotId] ?? { scale: 1, rotate: 0, x: 0, y: 0 };
 
+  // Icon-button step updates (delta-based)
   const updateImageTransform = (pageNumber: number, slotId: string, delta: { scale?: number; rotate?: number }) => {
     setImageTransforms(prev => {
-      const current = prev[pageNumber]?.[slotId] ?? { scale: 1, rotate: 0 };
+      const current = prev[pageNumber]?.[slotId] ?? { scale: 1, rotate: 0, x: 0, y: 0 };
       return {
         ...prev,
         [pageNumber]: {
@@ -774,10 +790,28 @@ export default function CreateMagazinePage() {
           [slotId]: {
             scale: Math.max(0.5, Math.min(3, current.scale + (delta.scale ?? 0))),
             rotate: (current.rotate + (delta.rotate ?? 0)) % 360,
+            x: current.x,
+            y: current.y,
           },
         },
       };
     });
+  };
+
+  // Gesture absolute-value updates (used by pointer handlers)
+  const applyImageTransform = (pageNumber: number, slotId: string, t: ImageTransform) => {
+    setImageTransforms(prev => ({
+      ...prev,
+      [pageNumber]: {
+        ...(prev[pageNumber] ?? {}),
+        [slotId]: {
+          scale: Math.max(0.5, Math.min(3, t.scale)),
+          rotate: t.rotate % 360,
+          x: t.x,
+          y: t.y,
+        },
+      },
+    }));
   };
 
   const resetImageTransform = (pageNumber: number, slotId: string) => {
@@ -789,6 +823,150 @@ export default function CreateMagazinePage() {
       }
       return next;
     });
+  };
+
+  // ── Pointer / gesture handlers for image slots ─────────────────────────────
+  const handleSlotPointerDown = (
+    pageNumber: number, slotId: string, slotUrl: string, isEditable: boolean,
+    e: React.PointerEvent<HTMLDivElement>
+  ) => {
+    if (!isEditable) return;
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+
+    const isEditing = selectedImageSlot?.pageNumber === pageNumber && selectedImageSlot?.slotId === slotId;
+
+    if (!isEditing) {
+      // Cancel any previous long-press
+      if (activeGestureRef.current?.longPressTimer) clearTimeout(activeGestureRef.current.longPressTimer);
+
+      activeGestureRef.current = {
+        pageNumber, slotId,
+        longPressTimer: slotUrl ? setTimeout(() => {
+          setSelectedImageSlot({ pageNumber, slotId });
+          if (activeGestureRef.current) activeGestureRef.current.longPressTimer = null;
+        }, 450) : null,
+        pointers: new Map([[e.pointerId, { x: e.clientX, y: e.clientY }]]),
+        startTransform: getImageTransform(pageNumber, slotId),
+        startPointerX: e.clientX,
+        startPointerY: e.clientY,
+        startDistance: 0,
+        startAngle: 0,
+        hasMoved: false,
+      };
+    } else {
+      // Already editing — track pointer for gestures
+      if (!activeGestureRef.current) {
+        activeGestureRef.current = {
+          pageNumber, slotId, longPressTimer: null,
+          pointers: new Map(),
+          startTransform: getImageTransform(pageNumber, slotId),
+          startPointerX: e.clientX, startPointerY: e.clientY,
+          startDistance: 0, startAngle: 0, hasMoved: false,
+        };
+      }
+      activeGestureRef.current.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      const pts = [...activeGestureRef.current.pointers.values()];
+      if (pts.length >= 2) {
+        const [p1, p2] = pts;
+        activeGestureRef.current.startDistance = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        activeGestureRef.current.startAngle = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
+        activeGestureRef.current.startTransform = getImageTransform(pageNumber, slotId);
+        activeGestureRef.current.startPointerX = (p1.x + p2.x) / 2;
+        activeGestureRef.current.startPointerY = (p1.y + p2.y) / 2;
+      } else {
+        activeGestureRef.current.startTransform = getImageTransform(pageNumber, slotId);
+        activeGestureRef.current.startPointerX = e.clientX;
+        activeGestureRef.current.startPointerY = e.clientY;
+      }
+      activeGestureRef.current.hasMoved = false;
+    }
+  };
+
+  const handleSlotPointerMove = (
+    pageNumber: number, slotId: string,
+    e: React.PointerEvent<HTMLDivElement>
+  ) => {
+    const g = activeGestureRef.current;
+    if (!g || g.pageNumber !== pageNumber || g.slotId !== slotId || !g.pointers.has(e.pointerId)) return;
+
+    g.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    const isEditing = selectedImageSlot?.pageNumber === pageNumber && selectedImageSlot?.slotId === slotId;
+
+    if (!isEditing) {
+      // Cancel long press if user is scrolling
+      const dx = e.clientX - g.startPointerX;
+      const dy = e.clientY - g.startPointerY;
+      if (Math.hypot(dx, dy) > 8 && g.longPressTimer) {
+        clearTimeout(g.longPressTimer);
+        g.longPressTimer = null;
+      }
+      return;
+    }
+
+    const pts = [...g.pointers.values()];
+
+    if (pts.length === 1) {
+      const dx = (e.clientX - g.startPointerX) / PREVIEW_SCALE;
+      const dy = (e.clientY - g.startPointerY) / PREVIEW_SCALE;
+      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+        g.hasMoved = true;
+        applyImageTransform(pageNumber, slotId, { ...g.startTransform, x: g.startTransform.x + dx, y: g.startTransform.y + dy });
+      }
+    } else if (pts.length === 2) {
+      const [p1, p2] = pts;
+      const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+      const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
+      const midX = (p1.x + p2.x) / 2;
+      const midY = (p1.y + p2.y) / 2;
+      g.hasMoved = true;
+      applyImageTransform(pageNumber, slotId, {
+        scale: Math.max(0.5, Math.min(3, g.startTransform.scale * (g.startDistance > 0 ? dist / g.startDistance : 1))),
+        rotate: (g.startTransform.rotate + angle - g.startAngle) % 360,
+        x: g.startTransform.x + (midX - g.startPointerX) / PREVIEW_SCALE,
+        y: g.startTransform.y + (midY - g.startPointerY) / PREVIEW_SCALE,
+      });
+    }
+  };
+
+  const handleSlotPointerUp = (
+    pageNumber: number, slotId: string, slotUrl: string, isEditable: boolean,
+    e: React.PointerEvent<HTMLDivElement>
+  ) => {
+    if (!isEditable) return;
+    const g = activeGestureRef.current;
+    const isEditing = selectedImageSlot?.pageNumber === pageNumber && selectedImageSlot?.slotId === slotId;
+
+    if (!isEditing && g?.longPressTimer) {
+      // Short tap (long press didn't fire) → replace image
+      clearTimeout(g.longPressTimer);
+      g.longPressTimer = null;
+      activeGestureRef.current = null;
+      handleReplaceSlotClick(pageNumber, slotId);
+      return;
+    }
+
+    if (!isEditing && !g?.longPressTimer && g) {
+      // Long press fired but no gesture → already entered edit mode
+      activeGestureRef.current = null;
+      return;
+    }
+
+    if (g) {
+      g.pointers.delete(e.pointerId);
+      if (g.pointers.size === 1) {
+        // Dropped to 1 finger — reset pan baseline
+        const [remaining] = [...g.pointers.values()];
+        g.startTransform = getImageTransform(pageNumber, slotId);
+        g.startPointerX = remaining.x;
+        g.startPointerY = remaining.y;
+        g.hasMoved = false;
+      } else if (g.pointers.size === 0) {
+        activeGestureRef.current = null;
+      }
+    }
   };
 
   const handleReplaceSlotClick = (pageNumber: number, slotId: string) => {
@@ -1099,7 +1277,7 @@ export default function CreateMagazinePage() {
       inner.style.backgroundSize = 'cover';
       inner.style.backgroundPosition = 'center';
       inner.style.backgroundRepeat = 'no-repeat';
-      inner.style.transform = `scale(${tr.scale}) rotate(${tr.rotate}deg)`;
+      inner.style.transform = `translate(${tr.x ?? 0}px, ${tr.y ?? 0}px) scale(${tr.scale}) rotate(${tr.rotate}deg)`;
       inner.style.transformOrigin = 'center center';
       slot.appendChild(inner);
     });
@@ -1216,7 +1394,7 @@ export default function CreateMagazinePage() {
           inner.style.backgroundSize = 'cover';
           inner.style.backgroundPosition = 'center';
           inner.style.backgroundRepeat = 'no-repeat';
-          inner.style.transform = `scale(${tr.scale}) rotate(${tr.rotate}deg)`;
+          inner.style.transform = `translate(${tr.x ?? 0}px, ${tr.y ?? 0}px) scale(${tr.scale}) rotate(${tr.rotate}deg)`;
           inner.style.transformOrigin = 'center center';
           slot.appendChild(inner);
         });
@@ -1677,7 +1855,7 @@ export default function CreateMagazinePage() {
                             'absolute overflow-hidden rounded-sm flex items-center justify-center',
                             !slotUrl && isEditable && 'bg-gray-100/30',
                             !isEditable && 'pointer-events-none',
-                            isSelected && 'ring-2 ring-gold ring-inset'
+                            isSelected ? 'ring-2 ring-gold ring-offset-0 ring-inset' : ''
                           )}
                           style={{
                             left: ib.x,
@@ -1689,42 +1867,47 @@ export default function CreateMagazinePage() {
                             transform: `rotate(${ib.rotate ?? 0}deg)`,
                             border: bw && bc ? `${bw}px ${bs} ${bc}` : undefined,
                             pointerEvents: isEditable ? 'auto' : 'none',
+                            cursor: isSelected ? 'grab' : (slotUrl ? 'pointer' : 'pointer'),
+                            touchAction: isSelected ? 'none' : 'auto',
                           }}
-                          onClick={() => {
-                            if (!isEditable) return;
-                            if (slotUrl) {
-                              setSelectedImageSlot({ pageNumber: pg.page_number, slotId: ib.id });
-                            } else {
-                              handleReplaceSlotClick(pg.page_number, ib.id);
-                            }
+                          onPointerDown={(e) => handleSlotPointerDown(pg.page_number, ib.id, slotUrl, isEditable, e)}
+                          onPointerMove={(e) => handleSlotPointerMove(pg.page_number, ib.id, e)}
+                          onPointerUp={(e) => handleSlotPointerUp(pg.page_number, ib.id, slotUrl, isEditable, e)}
+                          onPointerCancel={() => {
+                            if (activeGestureRef.current?.longPressTimer) clearTimeout(activeGestureRef.current.longPressTimer);
+                            activeGestureRef.current = null;
                           }}
                         >
                           {slotUrl ? (
                             <img
                               src={slotUrl}
                               crossOrigin="anonymous"
+                              draggable={false}
                               style={{
                                 width: '100%',
                                 height: '100%',
                                 objectFit: 'cover',
                                 objectPosition: 'center',
                                 borderRadius: ib.borderRadius ? `${ib.borderRadius}px` : undefined,
-                                pointerEvents: isEditable ? 'auto' : 'none',
-                                transform: `scale(${transform.scale}) rotate(${transform.rotate}deg)`,
+                                pointerEvents: 'none',
+                                transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale}) rotate(${transform.rotate}deg)`,
                                 transformOrigin: 'center center',
+                                userSelect: 'none',
                               }}
                             />
                           ) : (
                             <div
                               className="text-xs text-muted-foreground text-center p-2"
-                              style={{ pointerEvents: isEditable ? 'auto' : 'none' }}
+                              style={{ pointerEvents: 'none' }}
                             >
-                              {ib.editable === false ? 'Locked image' : 'Click to add image'}
+                              {ib.editable === false ? 'Locked image' : 'Tap to add image'}
                             </div>
                           )}
-                          {isEditable && (
+                          {/* Replace button — always visible on filled slots; edit hint when selected */}
+                          {isEditable && slotUrl && (
                             <button
                               data-ui="true"
+                              onPointerDown={(e) => e.stopPropagation()}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleReplaceSlotClick(pg.page_number, ib.id);
@@ -1735,6 +1918,15 @@ export default function CreateMagazinePage() {
                             >
                               <Image className="h-4 w-4" />
                             </button>
+                          )}
+                          {isSelected && (
+                            <div
+                              data-ui="true"
+                              className="absolute bottom-1 left-1/2 -translate-x-1/2 text-background text-center pointer-events-none"
+                              style={{ fontSize: 28, lineHeight: 1, textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}
+                            >
+                              ✋
+                            </div>
                           )}
                         </div>
                       );
@@ -1793,10 +1985,13 @@ export default function CreateMagazinePage() {
       </div>}
       {/* End of !loadingPages pages section */}
 
-      {/* Image transform controls — shown when a slot with an image is selected */}
+      {/* Image transform controls — shown when a slot is long-pressed into edit mode */}
       {selectedImageSlot && (userImages[selectedImageSlot.pageNumber]?.[selectedImageSlot.slotId]) && (
         <div className="mb-4 p-3 border rounded-lg bg-card flex items-center gap-3 flex-wrap">
-          <span className="text-sm font-medium shrink-0">Adjust Image</span>
+          <div className="shrink-0">
+            <span className="text-sm font-medium block">Adjust Image</span>
+            <span className="text-xs text-muted-foreground">Drag to reposition · Pinch to zoom/rotate</span>
+          </div>
 
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-muted-foreground">Zoom</span>
@@ -1845,7 +2040,11 @@ export default function CreateMagazinePage() {
 
           <button
             className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
-            onClick={() => setSelectedImageSlot(null)}
+            onClick={() => {
+              if (activeGestureRef.current?.longPressTimer) clearTimeout(activeGestureRef.current.longPressTimer);
+              activeGestureRef.current = null;
+              setSelectedImageSlot(null);
+            }}
           >
             <X className="h-4 w-4" />
           </button>
