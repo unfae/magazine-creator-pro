@@ -34,6 +34,7 @@ import CreateEventDPPage from "@/pages/CreateEventDPPage";
 import GenerateMagazinePage from "@/pages/GenerateMagazinePage";
 import Foundation from "@/pages/studio/Foundation";
 import PageBuilder from "@/pages/studio/PageBuilder";
+import TemplateGenerator from "@/pages/studio/TemplateGenerator";
 import FAQsPage from "@/pages/FAQsPage";
 import ContactPage from "@/pages/ContactPage";
 import TemplateRequestPage from "@/pages/TemplateRequestPage";
@@ -88,6 +89,7 @@ const App = () => (
             <Route path="/studio/elements" element={<ElementManager />} />
             <Route path="/studio/foundation" element={<Foundation />} />
             <Route path="/studio/page-builder" element={<PageBuilder />} />
+            <Route path="/studio/template-generator" element={<TemplateGenerator />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

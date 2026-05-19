@@ -46,17 +46,31 @@ export function usePageImageDownload() {
         const exportCloneId = `export-clone-${pageNumber}-${Date.now()}`;
         clone.id = exportCloneId;
 
-        // Convert img slots → background images (keep your existing workaround)
+        // Convert img slots → inner-wrapper background divs (consistent with PDF/video export).
+        // Using backgroundImage on the slot container directly is unreliable on desktop Chrome
+        // when ring/selection styles are active; the inner-div approach avoids that.
         clone.querySelectorAll('[data-image-slot="true"]').forEach((slotEl) => {
           const slot = slotEl as HTMLElement;
           const img = slot.querySelector("img") as HTMLImageElement | null;
           if (!img || !img.src) return;
 
-          slot.style.backgroundImage = `url(${img.src})`;
-          slot.style.backgroundSize = "cover";
-          slot.style.backgroundPosition = "center";
-          slot.style.backgroundRepeat = "no-repeat";
-          img.style.display = "none";
+          let tr = { scale: 1, rotate: 0, x: 0, y: 0 };
+          try {
+            const raw = slot.getAttribute("data-transform");
+            if (raw) tr = { ...tr, ...JSON.parse(raw) };
+          } catch {}
+
+          slot.innerHTML = "";
+          const inner = document.createElement("div");
+          inner.style.position = "absolute";
+          inner.style.inset = "0";
+          inner.style.backgroundImage = `url(${img.src})`;
+          inner.style.backgroundSize = "cover";
+          inner.style.backgroundPosition = "center";
+          inner.style.backgroundRepeat = "no-repeat";
+          inner.style.transform = `translate(${tr.x ?? 0}px, ${tr.y ?? 0}px) scale(${tr.scale}) rotate(${tr.rotate}deg)`;
+          inner.style.transformOrigin = "center center";
+          slot.appendChild(inner);
         });
 
         // Remove editor-only UI (keep)

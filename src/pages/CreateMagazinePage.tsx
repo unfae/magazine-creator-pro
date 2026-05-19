@@ -1851,6 +1851,7 @@ export default function CreateMagazinePage() {
                           data-image-slot="true"
                           data-page-number={pg.page_number}
                           data-slot-id={ib.id}
+                          data-transform={JSON.stringify(getImageTransform(pg.page_number, ib.id))}
                           className={cn(
                             'absolute overflow-hidden rounded-sm flex items-center justify-center',
                             !slotUrl && isEditable && 'bg-gray-100/30',
